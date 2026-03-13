@@ -9,6 +9,12 @@ use PHPUnit\Framework\Assert;
  */
 class FeatureContext extends MinkContext implements Context
 {
+    public function __construct()
+    {
+        // Wait for Selenium container to start
+        sleep(5);
+    }
+
     /**
      * @Given /^I am on the Login Page$/
      */

@@ -10,7 +10,7 @@ default:
       sessions:
         default:
           selenium2:
-            wd_host: http://selenium:4444/wd/hub
+            wd_host: http://smarthire_selenium:4444/wd/hub
             browser: chrome
             capabilities:
               browserName: chrome
