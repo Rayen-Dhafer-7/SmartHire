@@ -37,18 +37,24 @@ jobs:
       - name: Build and run Docker containers
         run: docker compose up -d --build
 
+      - name: Show all container logs
+        run: docker compose logs
+        
       - name: Wait for Laravel to be ready
         run: |
-          timeout 60s bash -c 'until curl -s localhost:80; do sleep 2; done'
+          timeout 120s bash -c 'until curl -sf http://localhost:8000; do echo "waiting..."; sleep 3; done'
           docker compose ps
 
       - name: Run Migrations
-        run: docker compose exec -T laravel.test php artisan migrate --force
+        run: docker exec smarthire_laravel php artisan migrate:status
 
       - name: Run Laravel Dusk Tests
-        run: docker compose exec -T laravel.test php artisan dusk
+        run: docker exec smarthire_laravel php artisan dusk
         continue-on-error: false
 
       - name: Docker Compose Logs on Failure
         if: failure()
+
         run: docker compose logs
+
+
