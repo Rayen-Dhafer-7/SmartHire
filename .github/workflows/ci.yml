@@ -66,7 +66,7 @@ jobs:
           timeout 60s bash -c 'until curl -sf http://localhost:5174; do echo "waiting for vue..."; sleep 3; done'
 
       - name: Run Migrations
-        run: docker exec smarthire_laravel php artisan migrate --force
+        run: docker exec smarthire_laravel php artisan migrate:status
 
       - name: Run Behat Selenium Tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty --no-interaction
