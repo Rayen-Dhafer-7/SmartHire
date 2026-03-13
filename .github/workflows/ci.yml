@@ -32,29 +32,30 @@ jobs:
           GROQ_API_URL=${{ secrets.GROQ_API_URL }}
           GROQ_MODEL=${{ secrets.GROQ_MODEL }}
           DUSK_DRIVER_URL=http://selenium:4444/wd/hub
+          FRONTEND_URL=http://smarthire_vue:5174
           EOF
+
       - name: Build and run Docker containers
         run: docker compose up -d --build
 
-      - name: Show all container logs
-        run: docker compose logs
-        
       - name: Wait for Laravel to be ready
         run: |
           timeout 120s bash -c 'until curl -sf http://localhost:8000; do echo "waiting..."; sleep 3; done'
-          docker compose ps
+
+      - name: Wait for Selenium to be ready
+        run: |
+          timeout 60s bash -c 'until curl -sf http://localhost:4444/status; do echo "waiting for selenium..."; sleep 3; done'
+
+      - name: Wait for Vue to be ready
+        run: |
+          timeout 60s bash -c 'until curl -sf http://localhost:5174; do echo "waiting for vue..."; sleep 3; done'
+
       - name: Run Migrations
-        run: docker exec smarthire_laravel php artisan migrate:status
+        run: docker exec smarthire_laravel php artisan migrate --force
 
-      - name: Run Laravel Dusk Tests
-        run: docker exec smarthire_laravel php artisan dusk 2>&1 || true
-        continue-on-error: false
-
-      - name: Run Selenium feature tests
-        run: docker exec -it smarthire_laravel vendor/bin/behat --format=pretty
+      - name: Run Behat Selenium Tests
+        run: docker exec smarthire_laravel vendor/bin/behat --format=pretty --no-interaction
 
       - name: Docker Compose Logs on Failure
         if: failure()
-
         run: docker compose logs
-
