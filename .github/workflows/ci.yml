@@ -52,6 +52,9 @@ jobs:
         run: docker exec smarthire_laravel php artisan dusk 2>&1 || true
         continue-on-error: false
 
+      - name: Run Selenium feature tests
+        run: docker exec smarthire_laravel vendor/bin/behat --format=pretty
+
       - name: Docker Compose Logs on Failure
         if: failure()
 
