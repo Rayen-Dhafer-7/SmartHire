@@ -39,6 +39,8 @@ jobs:
         run: |
           cd vue
           npm install --include=dev
+          npm install vite@latest --save-dev
+          ls node_modules/.bin/vite
 
       - name: Build and run Docker containers
         run: docker compose up -d --build
