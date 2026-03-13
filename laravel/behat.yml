@@ -6,7 +6,7 @@ default:
 
   extensions:
     Behat\MinkExtension:
-      base_url: http://smarthire_vue:5174
+      base_url: http://laravel:80      
       sessions:
         default:
           selenium2:
