@@ -13,7 +13,6 @@ default:
             wd_host: http://selenium:4444/wd/hub
             browser: chrome
             capabilities:
-              browserName: chrome
               version: "*"
               platform: LINUX
               extra_capabilities:
