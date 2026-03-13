@@ -49,13 +49,14 @@ jobs:
         run: docker exec smarthire_laravel php artisan migrate:status
 
       - name: Run Laravel Dusk Tests
-        run: docker exec smarthire_laravel php artisan dusk
+        run: docker exec -T smarthire_laravel php artisan dusk
         continue-on-error: false
 
       - name: Docker Compose Logs on Failure
         if: failure()
 
         run: docker compose logs
+
 
 
 
