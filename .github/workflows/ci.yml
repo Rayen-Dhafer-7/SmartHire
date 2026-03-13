@@ -36,25 +36,12 @@ jobs:
           EOF
 
       - name: Build and run Docker containers
-        run: docker compose up -d --build
-
-      - name: Install Vue dependencies
-        run: |
-          docker exec smarthire_vue rm -rf node_modules
-          docker exec smarthire_vue npm install --include=dev
-          docker exec smarthire_vue npm rebuild esbuild
-
-      - name: Restart Vue container
-        run: docker restart smarthire_vue
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
 
       - name: Show Vue logs
         run: |
-          sleep 15
+          sleep 20
           docker logs smarthire_vue
-
-      - name: Wait for Vue to be ready
-        run: |
-          timeout 60s bash -c 'until curl -sf http://localhost:5174; do echo "waiting for vue..."; sleep 3; done'
 
       - name: Wait for Laravel to be ready
         run: |
