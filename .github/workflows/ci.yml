@@ -36,12 +36,15 @@ jobs:
           EOF
 
       - name: Build and run Docker containers
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+        run: docker compose up -d --build
 
-      - name: Show Vue logs
+      - name: Show all logs
         run: |
           sleep 20
+          docker compose ps
           docker logs smarthire_vue
+          docker logs smarthire_laravel
+          docker logs smarthire_selenium
 
       - name: Wait for Laravel to be ready
         run: |
