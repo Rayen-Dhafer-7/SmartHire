@@ -53,7 +53,7 @@ jobs:
         continue-on-error: false
 
       - name: Run Selenium feature tests
-        run: docker exec smarthire_laravel vendor/bin/behat --format=pretty
+        run: docker exec -it smarthire_laravel vendor/bin/behat --format=pretty
 
       - name: Docker Compose Logs on Failure
         if: failure()
