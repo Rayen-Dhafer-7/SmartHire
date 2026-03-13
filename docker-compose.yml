@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  laravel:
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    container_name: smarthire_laravel
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./laravel:/var/www/html
+      - /var/www/html/vendor
+    networks:
+      - smarthire
+
+  vue:
+    build:
+      context: ./vue
+      dockerfile: Dockerfile
+    container_name: smarthire_vue
+    restart: unless-stopped
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./vue:/app
+      - /app/node_modules
+    networks:
+      - smarthire
+    depends_on:
+      - laravel
+
+  selenium:
+    image: selenium/standalone-chrome:latest
+    container_name: smarthire_selenium
+    restart: unless-stopped
+    ports:
+      - "4444:4444"
+      - "7900:7900"
+    shm_size: '2gb'
+    networks:
+      - smarthire
+
+networks:
+  smarthire:
+    driver: bridge

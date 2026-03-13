@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+
+# Laravel symlink (causes Docker build error)
+public/storage
+
+# Cache & logs
+storage/logs
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+bootstrap/cache
+
+# Environment
+.env
+.env.*
+
+# Tests
+tests
+
+# IDE
+.idea
+.vscode

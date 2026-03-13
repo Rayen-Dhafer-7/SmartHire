@@ -1,0 +1,18 @@
+/* smarthire structure: colors */
+
+:root {
+  /* LinkedIn Blue - Primary Color */
+  --primary-color: #0A66C2;
+  --primary-hover: #004182;
+  
+  /* Neutral scale */
+  --white: #ffffff;
+  --bg-light: #f3f2ef;
+  --text-dark: #191919;
+  --text-gray: #666666;
+  --border-color: #e0e0e0;
+  
+  /* Validation */
+  --error: #d11124;
+  --success: #057642;
+}
