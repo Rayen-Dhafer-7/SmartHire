@@ -46,7 +46,7 @@ jobs:
           docker compose ps
 
       - name: Run Migrations
-        run: docker exec smarthire_laravel php artisan migrate --force
+        run: docker exec smarthire_laravel php artisan migrate:status
 
       - name: Run Laravel Dusk Tests
         run: docker exec smarthire_laravel php artisan dusk
@@ -56,5 +56,6 @@ jobs:
         if: failure()
 
         run: docker compose logs
+
 
 
