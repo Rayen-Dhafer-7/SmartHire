@@ -11,8 +11,11 @@ services:
     volumes:
       - ./laravel:/var/www/html
       - /var/www/html/vendor
+      - ./Selenium/src/test/resources/features:/var/www/html/selenium-features 
     networks:
       - smarthire
+    depends_on:
+      - selenium
   vue:
     build:
       context: ./vue

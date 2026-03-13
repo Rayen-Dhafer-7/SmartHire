@@ -6,11 +6,11 @@ default:
 
   extensions:
     Behat\MinkExtension:
-      base_url: http://laravel:80      
+      base_url: http://laravel:80
       sessions:
         default:
           selenium2:
-            wd_host: http://smarthire_selenium:4444/wd/hub
+            wd_host: http://selenium:4444/wd/hub
             browser: chrome
             capabilities:
               browserName: chrome
@@ -19,7 +19,7 @@ default:
               extra_capabilities:
                 chromeOptions:
                   args:
+                    - --headless
                     - --disable-gpu
                     - --no-sandbox
-                    - --headless
                     - --window-size=1920,1080
