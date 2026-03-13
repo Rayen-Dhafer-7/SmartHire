@@ -35,6 +35,11 @@ jobs:
           FRONTEND_URL=http://smarthire_vue:5174
           EOF
 
+      - name: Install Vue node_modules for CI
+        run: |
+          cd vue
+          npm install --include=dev
+
       - name: Build and run Docker containers
         run: docker compose up -d --build
 
