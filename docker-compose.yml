@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   laravel:
     build:
@@ -14,7 +13,6 @@ services:
       - /var/www/html/vendor
     networks:
       - smarthire
-
   vue:
     build:
       context: ./vue
@@ -25,12 +23,10 @@ services:
       - "5174:5174"
     volumes:
       - ./vue:/app
-      - /app/node_modules
     networks:
       - smarthire
     depends_on:
       - laravel
-
   selenium:
     image: selenium/standalone-chrome:latest
     container_name: smarthire_selenium
@@ -41,7 +37,6 @@ services:
     shm_size: '2gb'
     networks:
       - smarthire
-
 networks:
   smarthire:
     driver: bridge
