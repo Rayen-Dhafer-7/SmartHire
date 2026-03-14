@@ -33,7 +33,6 @@ jobs:
           GROQ_MODEL=${{ secrets.GROQ_MODEL }}
           FRONTEND_URL=http://172.21.0.1:5174
           EOF
-
       - name: Create Vue .env file
         run: |
           cat <<EOF > vue/.env
