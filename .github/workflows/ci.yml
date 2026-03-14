@@ -108,6 +108,12 @@ jobs:
           docker logs smarthire_laravel
           docker logs smarthire_selenium
 
+      - name: Test Laravel login via POST
+        run: |
+          curl -v \
+            -X POST http://localhost:8000/login \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "email=dd@dd.dd&password=123456"
 
       - name: Run Behat Selenium Tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty --no-interaction
