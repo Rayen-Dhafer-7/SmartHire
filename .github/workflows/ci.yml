@@ -41,6 +41,13 @@ jobs:
           FRONTEND_URL=http://172.17.0.1:5174
           EOF
 
+      - name: Install Vue node_modules for CI
+        run: |
+          cd vue
+          npm install --include=dev
+          npm install vite@latest --save-dev
+          ls node_modules/.bin/vite
+
       - name: Build and run Docker containers
         run: docker compose up -d --build
 
