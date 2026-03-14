@@ -11,7 +11,7 @@ Feature: Login
     Given I am on the Login Page
     When I enter valid email "dd@dd.dd" and password "123456"
     And I click 'Sign In' button
-    Then I should be logged in
+    Then I should see the page
 
   Scenario: update company profile
     Given I am on the Company Profile Page

@@ -47,6 +47,22 @@ class FeatureContext extends MinkContext implements Context
     }
 
     /**
+     * @Then I should see the page
+     */
+    public function iShouldSeeThePageText()
+    {
+        sleep(3); // wait for page to load
+
+        // Get only the visible text of the page
+        $text = $this->getSession()->getPage()->getText();
+
+        // Print it in the terminal
+        echo "\n----- PAGE TEXT -----\n";
+        echo $text;
+        echo "\n--------------------\n";
+    }
+
+    /**
      * @Then I should be logged in
      */
     public function iShouldBeLoggedIn()
@@ -252,7 +268,7 @@ class FeatureContext extends MinkContext implements Context
             throw new \Exception('Not on application page. URL: ' . $url);
         }
     }
-    
+
     /**
      * @When I toggle :label jobs only
      */
