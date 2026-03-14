@@ -121,6 +121,24 @@ jobs:
           docker exec smarthire_laravel chmod -R 777 /var/www/html/storage
           docker exec smarthire_laravel chmod -R 777 /var/www/html/bootstrap/cache
 
+      - name: Check SSL cert
+        run: |
+          docker exec smarthire_laravel ls -la /var/www/html/certs/
+
+
+      - name: Fix SSL cert permissions
+        run: |
+          docker exec smarthire_laravel ls -la /var/www/html/certs/ || echo "certs dir missing"
+          docker exec smarthire_laravel php -r "
+            \$pdo = new PDO(
+              'mysql:host=\$_ENV[\"DB_HOST\"];port=\$_ENV[\"DB_PORT\"];dbname=\$_ENV[\"DB_DATABASE\"]',
+              \$_ENV['DB_USERNAME'],
+              \$_ENV['DB_PASSWORD'],
+              [PDO::MYSQL_ATTR_SSL_CA => '/var/www/html/certs/ca.pem', PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false]
+            );
+            echo 'DB OK';
+          " 2>&1 || echo "DB connection failed"
+
       - name: Debug env and API
         run: |
           echo "=== Vue .env ==="
