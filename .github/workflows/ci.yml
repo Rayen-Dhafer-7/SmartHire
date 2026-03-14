@@ -33,7 +33,7 @@ jobs:
           GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
           GROQ_API_URL=${{ secrets.GROQ_API_URL }}
           GROQ_MODEL=${{ secrets.GROQ_MODEL }}
-          FRONTEND_URL=http://172.21.0.1:5174
+          FRONTEND_URL=http://172.17.0.1:5174
           EOF
 
 
@@ -116,6 +116,8 @@ jobs:
           docker exec smarthire_laravel php artisan storage:link --force
           docker exec smarthire_laravel composer dump-autoload --optimize
           docker exec smarthire_laravel php artisan config:clear
+          docker exec smarthire_laravel chmod -R 777 /var/www/html/storage
+          docker exec smarthire_laravel chmod -R 777 /var/www/html/bootstrap/cache
 
       - name: Debug env and API
         run: |
