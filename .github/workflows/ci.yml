@@ -122,7 +122,7 @@ jobs:
           echo "=== Vue .env ==="
           docker exec smarthire_vue cat /app/.env
           echo "=== Laravel FRONTEND_URL ==="
-          docker exec smarthire_laravel php artisan env | grep FRONTEND
+          docker exec smarthire_laravel grep FRONTEND_URL /var/www/html/.env
           echo "=== Test API ==="
           curl -s -X POST http://localhost:8000/worker/login \
             -H "Content-Type: application/json" \
