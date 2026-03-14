@@ -34,6 +34,8 @@ jobs:
           GROQ_API_URL=${{ secrets.GROQ_API_URL }}
           GROQ_MODEL=${{ secrets.GROQ_MODEL }}
           FRONTEND_URL=http://172.17.0.1:5174
+          SESSION_DRIVER=file
+          CACHE_STORE=file
           EOF
 
 
