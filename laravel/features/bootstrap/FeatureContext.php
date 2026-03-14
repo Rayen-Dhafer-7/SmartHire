@@ -51,12 +51,15 @@ class FeatureContext extends MinkContext implements Context
      */
     public function iShouldSeeThePageText()
     {
-        sleep(3); // wait for page to load
+        $page = $this->getSession()->getPage();
+        $driver = $this->getSession()->getDriver();
 
-        // Get only the visible text of the page
-        $text = $this->getSession()->getPage()->getText();
+        // Wait for a key element that signals the page is loaded
+        $this->getSession()->wait(10000, "document.querySelector('.jobs-list, .profile-section') !== null");
 
-        // Print it in the terminal
+        // Now get the visible text
+        $text = $page->getText();
+
         echo "\n----- PAGE TEXT -----\n";
         echo $text;
         echo "\n--------------------\n";
