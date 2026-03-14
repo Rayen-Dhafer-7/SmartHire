@@ -134,7 +134,13 @@ jobs:
         run: |
           curl -v -X POST http://localhost:8000/worker/login \
             -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
             -d '{"email":"dd@dd.dd","password":"123456"}'
+
+      - name: Get Laravel error log
+        if: always()
+        run: |
+          docker exec smarthire_laravel cat /var/www/html/storage/logs/laravel.log | tail -50
 
       - name: Run Behat Selenium Tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty --no-interaction
