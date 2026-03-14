@@ -36,6 +36,7 @@ jobs:
           FRONTEND_URL=http://172.17.0.1:5174
           SESSION_DRIVER=file
           CACHE_STORE=file
+          DB_SSL_CA=/tmp/ca.pem
           EOF
 
       - name: Create SSL certificate
@@ -64,8 +65,8 @@ jobs:
 
       - name: Copy SSL cert into container
         run: |
-          docker cp laravel/certs/ca.pem smarthire_laravel:/var/www/html/certs/ca.pem
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
+          docker cp laravel/certs/ca.pem smarthire_laravel:/tmp/ca.pem
+          docker exec smarthire_laravel ls -la /tmp/ca.pem
 
 
       - name: Wait for Selenium to be ready
