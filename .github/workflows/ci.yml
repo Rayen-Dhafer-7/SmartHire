@@ -73,18 +73,22 @@ jobs:
 
       - name: Test Aiven MySQL connection
         run: |
-          echo "Testing database connection..."
+          echo "Testing Aiven DB connection..."
           docker exec smarthire_laravel bash -c "
             php -r '
               try {
                 \$pdo = new PDO(
-                  \"mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}\",
+                  \"mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE};charset=utf8\",
                   \"${DB_USERNAME}\",
-                  \"${DB_PASSWORD}\"
+                  \"${DB_PASSWORD}\",
+                  [
+                    PDO::MYSQL_ATTR_SSL_CA => \"/var/www/html/certs/ca.pem\",
+                    PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false
+                  ]
                 );
-                echo \"DB connection successful!\n\";
+                echo \"DB connection successful!\\n\";
               } catch (PDOException \$e) {
-                echo \"DB connection failed: \" . \$e->getMessage() . \"\n\";
+                echo \"DB connection failed: \" . \$e->getMessage() . \"\\n\";
                 exit(1);
               }
             ';
