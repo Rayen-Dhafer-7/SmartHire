@@ -143,6 +143,19 @@ jobs:
         run: |
           docker exec smarthire_laravel ls -la /var/www/html/certs/
 
+      - name: Check Laravel DB config
+        run: |
+          docker exec smarthire_laravel php -r "
+            \$app = require '/var/www/html/bootstrap/app.php';
+            \$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+            echo 'SSL_CA: ' . config('database.connections.mysql.options')[PDO::MYSQL_ATTR_SSL_CA] . PHP_EOL;
+          "
+
+
+      - name: Verify cert created on host
+        run: |
+          ls -la laravel/certs/
+          head -1 laravel/certs/ca.pem
 
       - name: Fix SSL cert permissions
         run: |
