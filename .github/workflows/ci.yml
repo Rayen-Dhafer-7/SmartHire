@@ -117,6 +117,17 @@ jobs:
           docker exec smarthire_laravel composer dump-autoload --optimize
           docker exec smarthire_laravel php artisan config:clear
 
+      - name: Debug env and API
+        run: |
+          echo "=== Vue .env ==="
+          docker exec smarthire_vue cat /app/.env
+          echo "=== Laravel FRONTEND_URL ==="
+          docker exec smarthire_laravel php artisan env | grep FRONTEND
+          echo "=== Test API ==="
+          curl -s -X POST http://localhost:8000/worker/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"dd@dd.dd","password":"123456"}'
+
       - name: Test API login
         run: |
           curl -v -X POST http://localhost:8000/worker/login \
