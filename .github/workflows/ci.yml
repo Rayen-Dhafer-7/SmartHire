@@ -62,6 +62,11 @@ jobs:
       - name: Build and run Docker containers
         run: docker compose up -d --build
 
+      - name: Copy SSL cert into container
+        run: |
+          docker cp laravel/certs/ca.pem smarthire_laravel:/var/www/html/certs/ca.pem
+          docker exec smarthire_laravel ls -la /var/www/html/certs/
+
 
       - name: Wait for Selenium to be ready
         run: |
