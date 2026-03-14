@@ -31,14 +31,14 @@ jobs:
           GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
           GROQ_API_URL=${{ secrets.GROQ_API_URL }}
           GROQ_MODEL=${{ secrets.GROQ_MODEL }}
-          FRONTEND_URL=http://172.17.0.1:5174
+          FRONTEND_URL=http://172.21.0.1:5174
           EOF
 
       - name: Create Vue .env file
         run: |
           cat <<EOF > vue/.env
-          VITE_API_URL=http://172.17.0.1:8000
-          FRONTEND_URL=http://172.17.0.1:5174
+          VITE_API_URL=http://172.21.0.1:8000
+          FRONTEND_URL=http://172.21.0.1:5174
           EOF
 
       - name: Install Vue node_modules for CI
