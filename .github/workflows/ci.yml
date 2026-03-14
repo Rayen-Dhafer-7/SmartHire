@@ -38,6 +38,10 @@ jobs:
           CACHE_STORE=file
           EOF
 
+      - name: Create SSL certificate
+        run: |
+          mkdir -p laravel/certs
+          echo "${{ secrets.DB_SSL_CA }}" > laravel/certs/ca.pem
 
       - name: Create Vue .env file
         run: |
@@ -120,11 +124,6 @@ jobs:
           docker exec smarthire_laravel php artisan config:clear
           docker exec smarthire_laravel chmod -R 777 /var/www/html/storage
           docker exec smarthire_laravel chmod -R 777 /var/www/html/bootstrap/cache
-
-      - name: Create SSL certificate
-        run: |
-          mkdir -p laravel/certs
-          echo "${{ secrets.DB_SSL_CA }}" > laravel/certs/ca.pem
 
       - name: Check SSL cert
         run: |
