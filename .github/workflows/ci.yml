@@ -108,6 +108,15 @@ jobs:
           docker logs smarthire_laravel
           docker logs smarthire_selenium
 
+      - name: Fix Laravel composer autoload
+        run: |
+          docker exec smarthire_laravel composer install --no-interaction --prefer-dist
+          docker exec smarthire_laravel composer require --dev laravel/dusk --no-interaction
+          docker exec smarthire_laravel php artisan dusk:install --no-interaction
+          docker exec smarthire_laravel php artisan storage:link --force
+          docker exec smarthire_laravel composer dump-autoload --optimize
+          docker exec smarthire_laravel php artisan config:clear
+
       - name: Test API login
         run: |
           curl -v -X POST http://localhost:8000/worker/login \
