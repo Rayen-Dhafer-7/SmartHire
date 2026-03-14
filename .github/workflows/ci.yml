@@ -67,6 +67,7 @@ jobs:
         run: |
           docker cp laravel/certs/ca.pem smarthire_laravel:/tmp/ca.pem
           docker exec smarthire_laravel ls -la /tmp/ca.pem
+          docker exec smarthire_laravel php artisan config:clear
 
 
       - name: Wait for Selenium to be ready
