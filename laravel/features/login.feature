@@ -12,6 +12,7 @@ Feature: Login
     When I enter valid email "dd@dd.dd" and password "123456"
     And I click 'Sign In' button
     Then I should see the page
+    
 
   Scenario: update company profile
     Given I am on the Company Profile Page

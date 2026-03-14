@@ -37,8 +37,8 @@ jobs:
       - name: Create Vue .env file
         run: |
           cat <<EOF > vue/.env
-          VITE_API_URL=http://host.docker.internal:8000
-          FRONTEND_URL=http://host.docker.internal:5174
+          VITE_API_URL=http://172.17.0.1:8000
+          FRONTEND_URL=http://172.17.0.1:5174
           EOF
 
       - name: Install Vue node_modules for CI
