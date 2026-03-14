@@ -63,11 +63,7 @@ jobs:
       - name: Build and run Docker containers
         run: docker compose up -d --build
 
-      - name: Copy SSL cert into container
-        run: |
-          docker cp laravel/certs/ca.pem smarthire_laravel:/tmp/ca.pem
-          docker exec smarthire_laravel ls -la /tmp/ca.pem
-          docker exec smarthire_laravel php artisan config:clear
+
 
 
       - name: Wait for Selenium to be ready
@@ -142,18 +138,7 @@ jobs:
           docker exec smarthire_laravel ls -la /var/www/html/certs/
 
 
-      - name: Fix SSL cert permissions
-        run: |
-          docker exec smarthire_laravel ls -la /var/www/html/certs/ || echo "certs dir missing"
-          docker exec smarthire_laravel php -r "
-            \$pdo = new PDO(
-              'mysql:host=\$_ENV[\"DB_HOST\"];port=\$_ENV[\"DB_PORT\"];dbname=\$_ENV[\"DB_DATABASE\"]',
-              \$_ENV['DB_USERNAME'],
-              \$_ENV['DB_PASSWORD'],
-              [PDO::MYSQL_ATTR_SSL_CA => '/var/www/html/certs/ca.pem', PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false]
-            );
-            echo 'DB OK';
-          " 2>&1 || echo "DB connection failed"
+ 
 
       - name: Debug env and API
         run: |
