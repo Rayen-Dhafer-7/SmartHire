@@ -17,22 +17,93 @@ jobs:
       - name: Create Laravel .env file
         run: |
           cat <<EOF > laravel/.env
-          APP_NAME=SmartHire
-          APP_ENV=testing
+          APP_NAME=Laravel
+          APP_ENV=local
           APP_KEY=${{ secrets.APP_KEY }}
           APP_DEBUG=true
           APP_URL=http://localhost:8000
+          DUSK_BASE_URL=http://laravel.test
+
+          APP_LOCALE=en
+          APP_FALLBACK_LOCALE=en
+          APP_FAKER_LOCALE=en_US
+
+          APP_MAINTENANCE_DRIVER=file
+          # APP_MAINTENANCE_STORE=database
+
+          PHP_CLI_SERVER_WORKERS=4
+
+          BCRYPT_ROUNDS=12
+
+          LOG_CHANNEL=errorlog
+          LOG_STACK=single
+          LOG_DEPRECATIONS_CHANNEL=null
+          LOG_LEVEL=debug
+
           DB_CONNECTION=mysql
           DB_HOST=${{ secrets.DB_HOST }}
           DB_PORT=${{ secrets.DB_PORT }}
           DB_DATABASE=${{ secrets.DB_DATABASE }}
           DB_USERNAME=${{ secrets.DB_USERNAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_SSL_CA=/var/www/html/certs/ca.pem
+
+          # ADD THESE SSL OPTIONS:
+          MYSQL_ATTR_SSL_CA=/var/www/html/certs/ca.pem
+          MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=false
+
+          SESSION_DRIVER=file
+          SESSION_LIFETIME=120
+          SESSION_ENCRYPT=false
+          SESSION_PATH=/
+          SESSION_DOMAIN=null
+
+          BROADCAST_CONNECTION=log
+          FILESYSTEM_DISK=public
+          QUEUE_CONNECTION=database
+
+          CACHE_STORE=database
+          # CACHE_PREFIX=
+
+          MEMCACHED_HOST=127.0.0.1
+
+          REDIS_CLIENT=phpredis
+          REDIS_HOST=127.0.0.1
+          REDIS_PASSWORD=null
+          REDIS_PORT=6379
+
+          # Mail configuration
+          MAIL_MAILER=smtp
+          MAIL_HOST=smtp.gmail.com
+          MAIL_PORT=465
+          MAIL_USERNAME=arena1clubs@gmail.com
+          MAIL_PASSWORD="xyxz wqca nyvo iexb"
+          MAIL_ENCRYPTION=ssl
+          MAIL_FROM_ADDRESS=arena1clubs@gmail.com
+          MAIL_FROM_NAME="SmartHire"
+
+          AWS_ACCESS_KEY_ID=
+          AWS_SECRET_ACCESS_KEY=
+          AWS_DEFAULT_REGION=us-east-1
+          AWS_BUCKET=
+          AWS_USE_PATH_STYLE_ENDPOINT=false
+
+          VITE_APP_NAME="\${APP_NAME}"
+
+          WWWUSER=1000
+          WWWGROUP=1000
+
+          JWT_SECRET=mysupersecretkeythatisatleast32characterslong123456
+          API_TOKEN=super_secret_token
+
+          FRONTEND_URL=http://localhost:5174
+
+          GROQ_API_URL=https://api.groq.com/openai/v1/chat/completions
           GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-          GROQ_API_URL=${{ secrets.GROQ_API_URL }}
           GROQ_MODEL=${{ secrets.GROQ_MODEL }}
-          FRONTEND_URL=http://172.21.0.1:5174
           EOF
+
+
       - name: Create Vue .env file
         run: |
           cat <<EOF > vue/.env
