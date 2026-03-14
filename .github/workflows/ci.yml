@@ -67,8 +67,6 @@ jobs:
         run: |
           docker cp laravel/certs/ca.pem smarthire_laravel:/tmp/ca.pem
           docker exec smarthire_laravel ls -la /tmp/ca.pem
-          docker exec smarthire_laravel sed -i 's|DB_SSL_CA=.*|DB_SSL_CA=/tmp/ca.pem|' /var/www/html/.env
-          docker exec smarthire_laravel grep DB_SSL_CA /var/www/html/.env
           
 
 
