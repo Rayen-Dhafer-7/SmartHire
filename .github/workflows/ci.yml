@@ -11,14 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-     
+
       - name: Checkout code
         uses: actions/checkout@v4
 
- 
       - name: Create Laravel .env file
         run: |
-          cat <<EOF > laravel/.env
+          cat > laravel/.env <<EOF
           APP_NAME=SmartHire
           APP_ENV=testing
           APP_KEY=${{ secrets.APP_KEY }}
@@ -36,7 +35,8 @@ jobs:
           FRONTEND_URL=http://172.17.0.1:5174
           SESSION_DRIVER=file
           CACHE_STORE=file
-          DB_SSL_CA=/tmp/ca.pem
+          DB_SSL_CA=/var/www/html/certs/ca.pem
+          MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=false
           EOF
 
       - name: Create SSL certificate
@@ -46,12 +46,11 @@ jobs:
 
       - name: Create Vue .env file
         run: |
-          cat <<EOF > vue/.env
+          cat > vue/.env <<EOF
           VITE_API_URL=http://172.17.0.1:8000
           FRONTEND_URL=http://172.17.0.1:5174
           EOF
 
-  
       - name: Install Vue node_modules for CI
         run: |
           cd vue
@@ -59,26 +58,16 @@ jobs:
           npm install vite@latest --save-dev
           ls node_modules/.bin/vite
 
-
       - name: Build and run Docker containers
         run: docker compose up -d --build
-
-      - name: Copy SSL cert into container
-        run: |
-          docker cp laravel/certs/ca.pem smarthire_laravel:/tmp/ca.pem
-          docker exec smarthire_laravel ls -la /tmp/ca.pem
-          
-
 
       - name: Wait for Selenium to be ready
         run: |
           timeout 120s bash -c 'until curl -sf http://localhost:4444/wd/hub/status | grep -q "ready.*true"; do echo "waiting for selenium..."; sleep 3; done'
 
-
       - name: Wait for Laravel to be ready
         run: |
           timeout 120s bash -c 'until curl -sf http://localhost:8000; do echo "waiting for laravel..."; sleep 3; done'
-
 
       - name: Wait for Vue to be ready
         run: |
@@ -87,32 +76,25 @@ jobs:
       - name: Test Aiven MySQL connection
         run: |
           echo "Testing Aiven DB connection..."
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_PORT=${{ secrets.DB_PORT }}
-          DB_DATABASE=${{ secrets.DB_DATABASE }}
-          DB_USERNAME=${{ secrets.DB_USERNAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
           docker exec smarthire_laravel bash -c "
             php -r '
               try {
                 \$pdo = new PDO(
-                  \"mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE};charset=utf8\",
-                  \"${DB_USERNAME}\",
-                  \"${DB_PASSWORD}\",
+                  \"mysql:host=\" . getenv(\"DB_HOST\") . \";port=\" . getenv(\"DB_PORT\") . \";dbname=\" . getenv(\"DB_DATABASE\") . \";charset=utf8\",
+                  getenv(\"DB_USERNAME\"),
+                  getenv(\"DB_PASSWORD\"),
                   [
-                    PDO::MYSQL_ATTR_SSL_CA => \"/tmp/ca.pem\",
+                    PDO::MYSQL_ATTR_SSL_CA => \"/var/www/html/certs/ca.pem\",
                     PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false
                   ]
                 );
-                echo \"DB connection successful!\\n\";
+                echo \"DB connection successful!\n\";
               } catch (PDOException \$e) {
-                echo \"DB connection failed: \" . \$e->getMessage() . \"\\n\";
+                echo \"DB connection failed: \" . \$e->getMessage() . \"\n\";
                 exit(1);
               }
-            ';
+            '
           "
-
 
       - name: Show container status
         run: |
@@ -132,35 +114,14 @@ jobs:
           docker exec smarthire_laravel php artisan config:clear
           docker exec smarthire_laravel php artisan cache:clear || true
 
-      - name: Verify SSL config
+      - name: Verify SSL cert and env
         run: |
+          echo "=== DB_SSL_CA in .env ==="
           docker exec smarthire_laravel grep DB_SSL_CA /var/www/html/.env
-          docker exec smarthire_laravel ls -la /tmp/ca.pem
-
-      - name: Check SSL cert
-        run: |
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
-
-
-
-
-      - name: Verify cert created on host
-        run: |
-          ls -la laravel/certs/
-          head -1 laravel/certs/ca.pem
-
-      - name: Fix SSL cert permissions
-        run: |
-          docker exec smarthire_laravel ls -la /var/www/html/certs/ || echo "certs dir missing"
-          docker exec smarthire_laravel php -r "
-            \$pdo = new PDO(
-              'mysql:host=\$_ENV[\"DB_HOST\"];port=\$_ENV[\"DB_PORT\"];dbname=\$_ENV[\"DB_DATABASE\"]',
-              \$_ENV['DB_USERNAME'],
-              \$_ENV['DB_PASSWORD'],
-              [PDO::MYSQL_ATTR_SSL_CA => '/var/www/html/certs/ca.pem', PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false]
-            );
-            echo 'DB OK';
-          " 2>&1 || echo "DB connection failed"
+          echo "=== cert file ==="
+          docker exec smarthire_laravel ls -la /var/www/html/certs/ca.pem
+          echo "=== cert preview ==="
+          docker exec smarthire_laravel head -1 /var/www/html/certs/ca.pem
 
       - name: Debug env and API
         run: |
@@ -183,12 +144,13 @@ jobs:
       - name: Get Laravel error log
         if: always()
         run: |
-          docker exec smarthire_laravel cat /var/www/html/storage/logs/laravel.log | tail -50
+          docker exec smarthire_laravel mkdir -p /var/www/html/storage/logs
+          docker exec smarthire_laravel touch /var/www/html/storage/logs/laravel.log
+          docker exec smarthire_laravel tail -50 /var/www/html/storage/logs/laravel.log
 
       - name: Run Behat Selenium Tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty --no-interaction
 
- 
       - name: Docker Compose Logs on Failure
         if: failure()
         run: docker compose logs
