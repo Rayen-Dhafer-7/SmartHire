@@ -4,15 +4,18 @@
     <div class="grid-3 mb-4">
       <div class="mb-3">
         <label class="form-label">Company Name</label>
-        <input type="text" class="form-control" v-model="profile.name" />
+        <input type="text" class="form-control" id="company_name" name="company_name" v-model="profile.name" />
+
       </div>
       <div class="mb-3">
         <label class="form-label">Location</label>
-        <input type="text" class="form-control" v-model="profile.location" />
+        <input type="text" class="form-control" id="location" name="location" v-model="profile.location" />
+
       </div>
       <div class="mb-3">
         <label class="form-label">Email</label>
-        <input type="email" class="form-control" v-model="profile.email" disabled />
+        <textarea class="form-control" id="industry_description" name="industry_description" rows="6" v-model="profile.description"></textarea>
+
       </div>
     </div>
 

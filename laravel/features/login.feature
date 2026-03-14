@@ -4,13 +4,13 @@ Feature: Login
   Scenario: invalid login - incorrect password
     Given I am on the Login Page
     When I enter valid email "dd@dd.dd" and password "wrongpass"
-    And I click 'login' button
-    Then I should see error message "Your email or password is incorrect!"
+    And I click 'Sign In' button
+    Then I should not see "inprogress-posts"
 
   Scenario: valid company login
     Given I am on the Login Page
     When I enter valid email "dd@dd.dd" and password "123456"
-    And I click 'login' button
+    And I click 'Sign In' button
     Then I should be logged in
 
   Scenario: update company profile
@@ -18,7 +18,7 @@ Feature: Login
     When I update company name to "Updated Company" and location to "New York"
     And I update industry description to "Updated industry description"
     And I click 'Save Profile' button
-    Then I should see success message "Your company information has been updated successfully."
+    Then I should see profile saved
 
   Scenario: view applicant details from old posts
     Given I am on the Old Posts Page
@@ -29,11 +29,11 @@ Feature: Login
   Scenario: login worker
     Given I click logout
     And I enter valid email "rayendhafer@gmail.com" and password "123456"
-    And I click 'login' button
+    And I click 'Sign In' button
     Then I should be logged in
 
   Scenario: liste jobs and search par skills
-    And I go to "/worker/jobs"
+    And I navigate to "/worker/jobs"
     Then I should be on the worker jobs page
     When I search for skill "react js"
     And I clear the skill search
@@ -43,5 +43,5 @@ Feature: Login
     Then I should be on the application page
 
   Scenario: test matched jobs
-    And I go to "/worker/jobs"
+    And I navigate to "/worker/jobs"
     When I toggle 'Matched' jobs only

@@ -11,11 +11,12 @@ services:
     volumes:
       - ./laravel:/var/www/html
       - /var/www/html/vendor
-      - ./Selenium/src/test/resources/features:/var/www/html/selenium-features 
     networks:
       - smarthire
     depends_on:
-      - selenium
+      selenium:
+        condition: service_healthy
+
   vue:
     build:
       context: ./vue
@@ -30,17 +31,23 @@ services:
       - smarthire
     depends_on:
       - laravel
-      - selenium
+
   selenium:
-    image: selenium/standalone-chrome:latest
-    container_name: smarthire_selenium
-    restart: unless-stopped
-    ports:
-      - "4444:4444"
-      - "7900:7900"
-    shm_size: '2gb'
-    networks:
-      - smarthire
+      image: selenium/standalone-chrome:3.141.59
+      container_name: smarthire_selenium
+      restart: unless-stopped
+      ports:
+        - "4444:4444"
+        - "7900:7900"
+      shm_size: '2gb'
+      networks:
+        - smarthire
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
 networks:
   smarthire:
     driver: bridge

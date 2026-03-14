@@ -326,6 +326,8 @@ onMounted(() => {
                 <label>Email Address</label>
                 <input 
                   type="email" 
+                  id="email"
+                  name="email"
                   v-model="formData.email" 
                   class="form-control" 
                   placeholder="name@example.com" 
@@ -339,6 +341,8 @@ onMounted(() => {
                 </div>
                 <input 
                   type="password" 
+                  id="password"
+                  name="password"
                   v-model="formData.password" 
                   class="form-control" 
                   placeholder="••••••••" 
@@ -460,7 +464,7 @@ onMounted(() => {
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="btn-primary">
+            <button type="submit" id="login" name="login" class="btn-primary">
               {{ isLoginMode ? 'Sign In' : 'Get Started' }}
             </button>
 
