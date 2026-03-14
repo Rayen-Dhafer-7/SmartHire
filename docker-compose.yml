@@ -11,7 +11,7 @@ services:
     volumes:
       - ./laravel:/var/www/html
       - /var/www/html/vendor
-      - ./laravel/certs:/var/www/html/certs:ro
+      - ./certs:/var/www/html/certs:ro
     networks:
       - smarthire
     depends_on:
