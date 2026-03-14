@@ -69,14 +69,17 @@ jobs:
 
       - name: Wait for Vue to be ready
         run: |
-          timeout 120s bash -c 'until curl -sf http://localhost:5174; do echo "waiting for vue..."; sleep 3; done'
-
-      - name: Test Aiven MySQL connection
-        run: |
           echo "Testing Aiven DB connection..."
+          # expand secrets in shell first
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
+          DB_DATABASE=${{ secrets.DB_DATABASE }}
+          DB_USERNAME=${{ secrets.DB_USERNAME }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
           docker exec smarthire_laravel bash -c "
             php -r '
-              try { 
+              try {
                 \$pdo = new PDO(
                   \"mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE};charset=utf8\",
                   \"${DB_USERNAME}\",
