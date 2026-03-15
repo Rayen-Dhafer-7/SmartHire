@@ -17,8 +17,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create Laravel .env for CI
-        run: cp laravel/.env.example laravel/.env
+      # --- Env and dirs (CI only; no changes committed) ---
+      - name: Prepare env and dirs for CI
+        run: |
+          cp laravel/.env.example laravel/.env
+          echo "VITE_API_URL=http://laravel" > vue/.env
+          echo "FRONTEND_URL=http://vue:5174" >> vue/.env
+          mkdir -p certs
 
       - name: Start services with Docker Compose
         run: docker compose up -d --build --wait
@@ -46,28 +51,35 @@ jobs:
           done
           if [ "$code" = "000" ]; then
             echo "Laravel did not respond. Container logs:"
-            docker compose logs laravel --tail=50
+            docker compose logs laravel --tail=80
             exit 1
           fi
 
       - name: Wait for Vue dev server to respond
         run: |
-          echo "Waiting for Vue..."
+          echo "Vue runs npm install on start (volume mount). Waiting 3 min then polling..."
+          sleep 180
+          echo "Polling for Vue on port 5174..."
           code="000"
-          for i in $(seq 1 36); do
+          for i in $(seq 1 72); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5174/ || true)
             if [ "$code" != "000" ]; then
               echo "Vue responded HTTP $code"
               break
             fi
-            echo "Waiting for Vue... ($i/36)"
+            echo "Waiting for Vue... ($i/72)"
             sleep 5
           done
           if [ "$code" = "000" ]; then
-            echo "Vue did not respond. Container logs:"
-            docker compose logs vue --tail=50
+            echo "Vue did not respond. Vue container logs:"
+            docker compose logs vue --tail=200
             exit 1
           fi
+
+      # Use Docker service name in CI so Selenium container can reach Vue (host IP differs in GHA)
+      - name: Set Behat base_url for CI (vue:5174)
+        run: |
+          sed -i 's|base_url:.*|base_url: http://vue:5174|' laravel/behat.yml
 
       - name: Run Behat tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty
