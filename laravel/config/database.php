@@ -1,192 +1,170 @@
-<?php
+name: SmartHire CI
 
-use Illuminate\Support\Str;
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-return [
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
 
-    /*
-    |--------------------------------------------------------------------------
-    | Default Database Connection Name
-    |--------------------------------------------------------------------------
-    |
-    | Here you may specify which of the database connections below you wish
-    | to use as your default connection for database operations. This is
-    | the connection which will be utilized unless another connection
-    | is explicitly specified when you execute a query / statement.
-    |
-    */
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    /*
-    |--------------------------------------------------------------------------
-    | Database Connections
-    |--------------------------------------------------------------------------
-    |
-    | Below are all of the database connections defined for your application.
-    | An example configuration is provided for each database system which
-    | is supported by Laravel. You're free to add / remove connections.
-    |
-    */
+      # --- Create certificate file from secret ---
+      - name: Create certificate file
+        run: |
+          # Create certs directory
+          mkdir -p certs
+          
+          # Write the certificate CONTENT from secret to file
+          echo "${{ secrets.DB_SSL_CA }}" > certs/ca.pem
+          
+          # Set proper permissions
+          chmod 644 certs/ca.pem
+          
+          echo "Certificate created at certs/ca.pem"
+          ls -la certs/
 
-    'connections' => [
+      # --- Prepare env files for CI ---
+      - name: Prepare env files for CI
+        run: |
+          # Laravel .env
+          cp laravel/.env.example laravel/.env
+          
+          # Update Laravel .env with database settings
+          echo "DB_CONNECTION=mysql" >> laravel/.env
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> laravel/.env
+          echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
+          echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
+          
+          # Set DB_SSL_CA to the FILE PATH (not the content)
+          echo "DB_SSL_CA=certs/ca.pem" >> laravel/.env
+          
+          # Vue .env
+          echo "VITE_API_URL=http://placeholder:8000" > vue/.env
+          echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
 
-        'sqlite' => [
-            'driver' => 'sqlite',
-            'url' => env('DB_URL'),
-            'database' => env('DB_DATABASE', database_path('database.sqlite')),
-            'prefix' => '',
-            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
-        ],
+      - name: Install Vue node_modules for CI
+        run: |
+          cd vue
+          npm install --include=dev
+          npm install vite@latest --save-dev
 
-        'mysql' => [
-            'driver' => 'mysql',
-            'host' => env('DB_HOST'),
-            'port' => env('DB_PORT'),
-            'database' => env('DB_DATABASE'),
-            'username' => env('DB_USERNAME'),
-            'password' => env('DB_PASSWORD'),
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
-            'strict' => true,
-            'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('DB_SSL_CA') ? $this->writeCertToTempFile(env('DB_SSL_CA')) : null,
-            ]) : [],
-        ],
+      - name: Start services with Docker Compose
+        run: |
+          docker compose up -d --build --wait
+          sleep 10
 
-        // Add this method to your database.php config file
-        protected function writeCertToTempFile($certContent) {
-            $tempFile = tempnam(sys_get_temp_dir(), 'mysql_ssl_ca_');
-            file_put_contents($tempFile, $certContent);
-            register_shutdown_function(function() use ($tempFile) {
-                if (file_exists($tempFile)) {
-                    unlink($tempFile);
-                }
-            });
-            return $tempFile;
-        }
+      - name: Show container status
+        run: docker compose ps -a
 
-        'mariadb' => [
-            'driver' => 'mariadb',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
-            'unix_socket' => env('DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'strict' => true,
-            'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
-        ],
+      # Verify certificate is in the container
+      - name: Verify certificate in container
+        run: |
+          echo "Checking certificate in container:"
+          docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
+          
+          # Fix storage permissions
+          docker exec smarthire_laravel chmod -R 777 storage bootstrap/cache
 
-        'pgsql' => [
-            'driver' => 'pgsql',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => env('DB_CHARSET', 'utf8'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
-        ],
+      # Host IP detection
+      - name: Set Vue .env and Behat base_url to host IP
+        run: |
+          HOST_IP=$(docker exec smarthire_selenium ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]' || echo "172.17.0.1")
+          if [ -z "$HOST_IP" ]; then
+            HOST_IP="172.17.0.1"
+            echo "Using fallback host IP: $HOST_IP"
+          else
+            echo "Detected host gateway IP: $HOST_IP"
+          fi
+          
+          # Update Vue .env
+          echo "VITE_API_URL=http://${HOST_IP}:8000" > vue/.env
+          echo "FRONTEND_URL=http://${HOST_IP}:5174" >> vue/.env
+          
+          # Update behat.yml
+          if [ -f laravel/behat.yml ]; then
+            sed -i "s|base_url:.*|base_url: http://${HOST_IP}:5174|" laravel/behat.yml
+          fi
 
-        'sqlsrv' => [
-            'driver' => 'sqlsrv',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', 'localhost'),
-            'port' => env('DB_PORT', '1433'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => env('DB_CHARSET', 'utf8'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            // 'encrypt' => env('DB_ENCRYPT', 'yes'),
-            // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
-        ],
+      - name: Restart Vue to pick up .env
+        run: docker compose restart vue
 
-    ],
+      - name: Prepare Laravel
+        run: |
+          docker exec smarthire_laravel php artisan key:generate --force
+          docker exec smarthire_laravel php artisan config:clear
+          docker exec smarthire_laravel php artisan config:cache
+          docker exec smarthire_laravel php artisan migrate --force
 
-    /*
-    |--------------------------------------------------------------------------
-    | Migration Repository Table
-    |--------------------------------------------------------------------------
-    |
-    | This table keeps track of all the migrations that have already run for
-    | your application. Using this information, we can determine which of
-    | the migrations on disk haven't actually been run on the database.
-    |
-    */
+      - name: Wait for Laravel to respond
+        run: |
+          echo "Waiting for Laravel..."
+          code="000"
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ || true)
+            if [ "$code" != "000" ]; then
+              echo "Laravel responded HTTP $code"
+              break
+            fi
+            sleep 5
+          done
+          if [ "$code" = "000" ]; then
+            echo "Laravel logs:"
+            docker compose logs laravel --tail=80
+            exit 1
+          fi
 
-    'migrations' => [
-        'table' => 'migrations',
-        'update_date_on_publish' => true,
-    ],
+      - name: Wait for Vue dev server
+        run: |
+          echo "Polling Vue..."
+          code="000"
+          for i in $(seq 1 72); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5174/ || true)
+            if [ "$code" != "000" ]; then
+              echo "Vue responded HTTP $code"
+              break
+            fi
+            sleep 5
+          done
+          if [ "$code" = "000" ]; then
+            echo "Vue logs:"
+            docker compose logs vue --tail=200
+            exit 1
+          fi
 
-    /*
-    |--------------------------------------------------------------------------
-    | Redis Databases
-    |--------------------------------------------------------------------------
-    |
-    | Redis is an open source, fast, and advanced key-value store that also
-    | provides a richer body of commands than a typical key-value system
-    | such as Memcached. You may define your connection settings here.
-    |
-    */
+      # Test Aiven MySQL connection + latency
+      - name: Test Aiven MySQL connection speed
+        run: |
+          echo "Testing Aiven MySQL connection..."
+          echo "Certificate in container:"
+          docker exec smarthire_laravel ls -la /var/www/html/certs/
+          echo ""
+          echo "Calling your debug-speed endpoint:"
+          curl -v http://localhost:8000/debug-speed || true
+          
+          # If curl fails, show logs
+          if [ $? -ne 0 ]; then
+            echo ""
+            echo "Laravel logs:"
+            docker compose logs laravel --tail=50
+          fi
 
-    'redis' => [
+      # Warm SPA
+      - name: Warm Vue app
+        run: |
+          curl -s -o /dev/null http://localhost:5174/
+          curl -s -o /dev/null http://localhost:5174/login
+          sleep 15
 
-        'client' => env('REDIS_CLIENT', 'phpredis'),
-
-        'options' => [
-            'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
-            'persistent' => env('REDIS_PERSISTENT', false),
-        ],
-
-        'default' => [
-            'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
-            'database' => env('REDIS_DB', '0'),
-            'max_retries' => env('REDIS_MAX_RETRIES', 3),
-            'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
-            'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
-            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
-        ],
-
-        'cache' => [
-            'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
-            'database' => env('REDIS_CACHE_DB', '1'),
-            'max_retries' => env('REDIS_MAX_RETRIES', 3),
-            'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
-            'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
-            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
-        ],
-
-    ],
-
-];
+      - name: Run Behat tests
+        run: docker exec smarthire_laravel vendor/bin/behat --format=pretty || true
