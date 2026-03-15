@@ -67,6 +67,13 @@ jobs:
       - name: Show container status
         run: docker compose ps -a
 
+      - name: Test Aiven MySQL connection
+        run: |
+          docker exec smarthire_laravel php artisan tinker --execute="
+            DB::connection()->getPdo();
+            echo 'Aiven MySQL connection OK';
+          "
+
       # Host IP = how the browser in Selenium reaches Vue & Laravel. Old workflow used 172.17.0.1; detect gateway or fallback.
       - name: Set Vue .env and Behat base_url to host IP
         run: |
@@ -132,6 +139,18 @@ jobs:
             docker compose logs laravel --tail=80
             exit 1
           fi
+
+      - name: Test API login
+        run: |
+          res=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8000/worker/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"dd@dd.dd","password":"123456"}')
+          code=$(echo "$res" | tail -n1)
+          body=$(echo "$res" | sed '$d')
+          echo "Login API response ($code): $body"
+          if [ "$code" != "200" ]; then echo "Login API failed (expected 200)"; exit 1; fi
+          if ! echo "$body" | grep -q '"token"'; then echo "Login API response missing token"; exit 1; fi
+          echo "API login OK"
 
       - name: Wait for Vue dev server to respond
         run: |
