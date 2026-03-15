@@ -143,28 +143,27 @@ jobs:
 
       
       # Replace your debug-speed test with this
-      - name: Test Aiven MySQL connection speed
+      - name: Debug the debug-speed endpoint
         run: |
-          echo "Testing Aiven MySQL connection..."
+          echo "1️⃣ Checking the actual debug-speed endpoint code:"
+          docker exec smarthire_laravel cat /var/www/html/routes/web.php | grep -A 20 -B 5 "debug-speed" || echo "Not in web.php"
+          docker exec smarthire_laravel cat /var/www/html/routes/api.php | grep -A 20 -B 5 "debug-speed" || echo "Not in api.php"
           
-          echo "1️⃣ Checking if port 8000 is listening:"
-          netstat -tln | grep 8000 || echo "Port 8000 not listening"
+          echo -e "\n2️⃣ Checking Laravel error logs:"
+          docker exec smarthire_laravel php artisan tinker --execute="
+            \$logFile = '/var/www/html/storage/logs/laravel.log';
+            if (file_exists(\$logFile)) {
+              \$logs = file_get_contents(\$logFile);
+              \$lines = explode(\"\n\", \$logs);
+              \$lastLines = array_slice(\$lines, -50);
+              echo implode(\"\n\", \$lastLines);
+            } else {
+              echo 'No log file found';
+            }
+          "
           
-          echo "2️⃣ Testing connection to Laravel container:"
-          curl -v http://127.0.0.1:8000/debug-speed || true
-          curl -v http://localhost:8000/debug-speed || true
-          
-          echo "3️⃣ Getting container IP and testing directly:"
-          CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' smarthire_laravel)
-          echo "Laravel container IP: $CONTAINER_IP"
-          curl -v http://$CONTAINER_IP:8000/debug-speed || true
-          
-          echo "4️⃣ Checking Docker port mapping:"
-          docker port smarthire_laravel
-          
-          echo "5️⃣ Testing from inside the container:"
-          docker exec smarthire_laravel curl -v http://127.0.0.1:8000/debug-speed || true
-
+          echo -e "\n3️⃣ Testing a simple Laravel route to verify Laravel is working:"
+          curl -v http://localhost:8000/ || true
 
 
 
