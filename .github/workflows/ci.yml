@@ -149,6 +149,17 @@ jobs:
           echo "--- .env inside container ---"
           docker exec smarthire_laravel grep -E "DB_CONNECTION|DB_HOST" /var/www/html/.env
           
+          echo "--- Full PDO DSN test ---"
+          docker exec smarthire_laravel php -r "
+            \$host = getenv('DB_HOST');
+            \$port = getenv('DB_PORT');
+            echo 'HOST: [' . \$host . ']' . PHP_EOL;
+            echo 'PORT: [' . \$port . ']' . PHP_EOL;
+            echo 'LENGTH: ' . strlen(\$host) . PHP_EOL;
+            \$sock = @fsockopen(\$host, (int)\$port, \$errno, \$errstr, 5);
+            echo \$sock ? 'TCP: OK' : 'TCP FAILED: ' . \$errstr;
+          "
+          
           echo "Calling http://localhost:8000/debug-speed"
           curl -s http://localhost:8000/debug-speed | jq . || curl -v http://localhost:8000/debug-speed
           
