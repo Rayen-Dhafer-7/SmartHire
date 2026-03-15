@@ -95,7 +95,6 @@ jobs:
 
       - name: Prepare Laravel (No migrations)
         run: |
-          docker exec smarthire_laravel php artisan config:clear
           docker exec smarthire_laravel php artisan config:cache
 
       - name: Wait for Laravel to respond
