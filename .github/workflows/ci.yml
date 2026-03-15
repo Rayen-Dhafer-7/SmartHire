@@ -92,10 +92,11 @@ jobs:
       - name: Restart Vue to pick up .env
         run: docker compose restart vue
 
+      # migrate:fresh = drop all tables and re-run migrations (use a dedicated CI DB in Aiven, not production)
       - name: Prepare Laravel (key, migrate)
         run: |
           docker exec smarthire_laravel php artisan key:generate --force
-          docker exec smarthire_laravel php artisan migrate --force
+          docker exec smarthire_laravel php artisan migrate:fresh --force
 
       - name: Seed Behat test users (so login API finds dd@dd.dd and rayendhafer@gmail.com)
         run: |
