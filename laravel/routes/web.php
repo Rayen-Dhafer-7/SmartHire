@@ -83,28 +83,21 @@ Route::prefix('worker')->group(function () {
 
 Route::get('/debug-speed', function() {
     $start = microtime(true);
-    
     try {
-        $pdo = new PDO(
-            "mysql:host=" . env('DB_HOST') . ";port=" . env('DB_PORT') . ";dbname=" . env('DB_DATABASE'),
-            env('DB_USERNAME'),
-            env('DB_PASSWORD'),
-            [] // ← no SSL, just test TCP connection
-        );
+        DB::connection()->getPdo();
+        $connectTime = round((microtime(true) - $start) * 1000, 2);
         
-        $connectTime = microtime(true) - $start;
         $queryStart = microtime(true);
-        $stmt = $pdo->query("SELECT 1");
-        $queryTime = microtime(true) - $queryStart;
+        DB::select('SELECT 1');
+        $queryTime = round((microtime(true) - $queryStart) * 1000, 2);
         
         return response()->json([
-            'connect_time_ms' => round($connectTime * 1000, 2),
-            'query_time_ms' => round($queryTime * 1000, 2),
+            'connect_time_ms' => $connectTime,
+            'query_time_ms' => $queryTime,
             'total_time_ms' => round((microtime(true) - $start) * 1000, 2),
-            'aiven_host' => env('DB_HOST')
+            'aiven_host' => config('database.connections.mysql.host')
         ]);
-        
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         return response()->json(['error' => $e->getMessage()]);
     }
 });
