@@ -38,12 +38,22 @@ jobs:
       - name: Show container status
         run: docker compose ps -a
 
-      # Host IP = gateway from containers (like 172.18.0.1). Browser in Selenium must use this to reach Vue & Laravel (same as your PC 172.21.0.1).
-      - name: Set Vue .env and Behat base_url to host gateway IP
+      # Host IP = how the browser in Selenium reaches Vue & Laravel. Old workflow used 172.17.0.1; detect gateway or fallback.
+      - name: Set Vue .env and Behat base_url to host IP
         run: |
-          HOST_IP=$(docker exec smarthire_selenium ip route show default | awk '/default/ {print $3}' | tr -d '[:space:]')
-          if [ -z "$HOST_IP" ]; then echo "ERROR: Could not get host gateway IP"; exit 1; fi
-          echo "Host gateway IP (for browser in Selenium): [$HOST_IP]"
+          HOST_IP=$(docker exec smarthire_selenium ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]')
+          if [ -z "$HOST_IP" ]; then
+            HOST_IP=$(docker exec smarthire_laravel ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]')
+          fi
+          if [ -z "$HOST_IP" ]; then
+            HOST_IP=$(docker network inspect $(docker inspect smarthire_selenium -f '{{range $k,$v := .NetworkSettings.Networks}}{{$v.NetworkID}}{{end}}' 2>/dev/null) --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null | tr -d '[:space:]')
+          fi
+          if [ -z "$HOST_IP" ]; then
+            HOST_IP="172.17.0.1"
+            echo "Using fallback host IP (old workflow value): $HOST_IP"
+          else
+            echo "Detected host gateway IP: $HOST_IP"
+          fi
           echo "VITE_API_URL=http://${HOST_IP}:8000" > vue/.env
           echo "FRONTEND_URL=http://${HOST_IP}:5174" >> vue/.env
           sed -i "s|base_url:.*|base_url: http://${HOST_IP}:5174|" laravel/behat.yml
