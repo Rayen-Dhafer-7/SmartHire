@@ -157,6 +157,34 @@ jobs:
             exit 1
           fi
 
+
+      # ✅ ADD this new step here, before Test Aiven MySQL connection speed
+      - name: Direct PHP connection test
+        run: |
+          docker exec --user root smarthire_laravel php -r "
+            \$host = trim(file_get_contents('/var/www/html/.env'));
+            \$env = [];
+            foreach (explode(PHP_EOL, \$host) as \$line) {
+              if (strpos(\$line, '=') !== false && \$line[0] !== '#') {
+                [\$k, \$v] = explode('=', \$line, 2);
+                \$env[trim(\$k)] = trim(\$v);
+              }
+            }
+            echo 'DB_HOST: ' . (\$env['DB_HOST'] ?? 'MISSING') . PHP_EOL;
+            echo 'DB_PORT: ' . (\$env['DB_PORT'] ?? 'MISSING') . PHP_EOL;
+            echo 'DB_DATABASE: ' . (\$env['DB_DATABASE'] ?? 'MISSING') . PHP_EOL;
+            echo 'DB_SSL_CA: ' . (\$env['DB_SSL_CA'] ?? 'MISSING') . PHP_EOL;
+            
+            echo PHP_EOL . 'Attempting TCP connection...' . PHP_EOL;
+            \$sock = @fsockopen(\$env['DB_HOST'], (int)\$env['DB_PORT'], \$errno, \$errstr, 5);
+            if (\$sock) {
+              echo 'TCP connection: SUCCESS' . PHP_EOL;
+              fclose(\$sock);
+            } else {
+              echo 'TCP connection FAILED: ' . \$errstr . ' (' . \$errno . ')' . PHP_EOL;
+            }
+          "
+
       
       - name: Test Aiven MySQL connection speed
         run: |
