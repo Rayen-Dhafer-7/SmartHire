@@ -53,6 +53,15 @@ jobs:
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
 
+
+      - name: Debug env file
+        run: |
+          echo "--- laravel/.env DB section ---"
+          grep -E "DB_|APP_KEY" laravel/.env
+          
+          echo "--- laravel/.env.example DB section ---"
+          grep -E "DB_|APP_KEY" laravel/.env.example
+
       - name: Install Vue node_modules for CI
         run: |
           cd vue
