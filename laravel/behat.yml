@@ -6,7 +6,8 @@ default:
 
   extensions:
     Behat\MinkExtension:
-      base_url: http://172.17.0.1:5174
+      # Use Docker service name so the browser (Chrome in Selenium) can reach the Vue app from any environment
+      base_url: http://vue:5174
       browser_name: chrome
       sessions:
         default:

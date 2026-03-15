@@ -17,11 +17,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Create env files for CI
+        run: |
+          cp laravel/.env.example laravel/.env
+          echo "VITE_API_URL=http://laravel" > vue/.env
+          echo "FRONTEND_URL=http://vue:5174" >> vue/.env
+
       - name: Start services with Docker Compose
         run: docker compose up -d --build --wait
 
       - name: Show container status
         run: docker compose ps -a
+
+      - name: Prepare Laravel (key, migrate)
+        run: |
+          docker exec smarthire_laravel php artisan key:generate --force
+          docker exec smarthire_laravel php artisan migrate --force
 
       - name: Wait for Laravel to respond
         run: |
