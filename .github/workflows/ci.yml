@@ -17,44 +17,43 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # --- Prepare certificates and env files ---
-      - name: Create certificates directory locally
-        run: |
-          mkdir -p certs
-          mkdir -p laravel/certs
-          chmod 777 certs laravel/certs || true
-
-      - name: Create CA certificate from secret
-        run: |
-          if [ -n "${{ secrets.DB_SSL_CA }}" ]; then
-            echo "${{ secrets.DB_SSL_CA }}" > certs/ca.pem
-            cp certs/ca.pem laravel/certs/ca.pem
-            chmod 644 certs/ca.pem laravel/certs/ca.pem
-            echo "CA certificate created successfully"
-            ls -la certs/
-            ls -la laravel/certs/
-          else
-            echo "Error: DB_SSL_CA secret not found"
-            exit 1
-          fi
-
+      # --- Prepare env files with secret directly ---
       - name: Prepare env files for CI
         run: |
           # Laravel .env
           cp laravel/.env.example laravel/.env
           
-          # Update Laravel .env with database SSL settings
+          # Update Laravel .env with database SSL settings - using secret directly
           echo "DB_CONNECTION=mysql" >> laravel/.env
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> laravel/.env
           echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
-          echo "DB_SSL_CA=/var/www/html/certs/ca.pem" >> laravel/.env
           
           # Vue .env
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
+
+      - name: Create CA certificate file from secret
+        run: |
+          # Create certs directory
+          mkdir -p certs
+          
+          # Write the secret directly to the certificate file
+          cat > certs/ca.pem << 'EOF'
+          ${{ secrets.DB_SSL_CA }}
+          EOF
+          
+          # Set proper permissions
+          chmod 644 certs/ca.pem
+          
+          # Verify file was created
+          echo "Certificate file created at certs/ca.pem"
+          ls -la certs/
+          
+          # Show first few lines (for debugging)
+          head -5 certs/ca.pem
 
       - name: Install Vue node_modules for CI
         run: |
@@ -64,64 +63,32 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose up -d --build
-          sleep 15
+          docker compose up -d --build --wait
+          sleep 10
 
       - name: Show container status
         run: docker compose ps -a
 
-      # Copy certificates to running containers using docker exec with sudo
-      - name: Setup certificates in containers
+      # Copy certificate to container using docker cp
+      - name: Copy certificate to container
         run: |
-          # First, check if we can access the container
-          echo "Checking container access..."
-          docker exec smarthire_laravel whoami || true
+          # Copy certificate to container
+          docker cp certs/ca.pem smarthire_laravel:/var/www/html/certs.pem
           
-          # Create directory with proper permissions using different method
-          echo "Creating certs directory in container..."
-          docker exec smarthire_laravel bash -c "mkdir -p /var/www/html/certs && chmod 777 /var/www/html/certs" || true
-          
-          # Copy certificate file using docker cp (this should work)
-          echo "Copying certificate to container..."
-          docker cp certs/ca.pem smarthire_laravel:/tmp/ca.pem
-          
-          # Move certificate to final location using docker exec
-          echo "Moving certificate to final location..."
-          docker exec smarthire_laravel bash -c "cp /tmp/ca.pem /var/www/html/certs/ca.pem && chmod 644 /var/www/html/certs/ca.pem && chown www-data:www-data /var/www/html/certs/ca.pem" || true
+          # Set environment variable in container for the certificate
+          docker exec smarthire_laravel bash -c "echo 'DB_SSL_CA=/var/www/html/certs.pem' >> /var/www/html/.env"
           
           # Verify certificate is in place
           echo "Verifying certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
+          docker exec smarthire_laravel ls -la /var/www/html/certs.pem || true
           
           # Fix storage permissions
-          echo "Fixing storage permissions..."
-          docker exec smarthire_laravel bash -c "chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache" || true
-          docker exec smarthire_laravel bash -c "chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache" || true
-
-      # Alternative method: Use docker compose exec with volume mount
-      - name: Alternative certificate setup using volume mount
-        run: |
-          echo "Stopping containers..."
-          docker compose down
-          
-          echo "Updating docker-compose.yml to mount certs volume..."
-          # This is a fallback - you might need to modify your docker-compose.yml
-          # to include: - ./certs:/var/www/html/certs:ro
-          
-          echo "Restarting containers with volume mount..."
-          docker compose up -d --build
-          sleep 15
+          docker exec smarthire_laravel chmod -R 777 storage bootstrap/cache
 
       # Host IP detection
       - name: Set Vue .env and Behat base_url to host IP
         run: |
-          HOST_IP=$(docker exec smarthire_selenium ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]' || true)
-          if [ -z "$HOST_IP" ]; then
-            HOST_IP=$(docker exec smarthire_laravel ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]' || true)
-          fi
-          if [ -z "$HOST_IP" ]; then
-            HOST_IP=$(docker network inspect $(docker inspect smarthire_selenium -f '{{range $k,$v := .NetworkSettings.Networks}}{{$v.NetworkID}}{{end}}' 2>/dev/null) --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null | tr -d '[:space:]' || true)
-          fi
+          HOST_IP=$(docker exec smarthire_selenium ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]' || echo "172.17.0.1")
           if [ -z "$HOST_IP" ]; then
             HOST_IP="172.17.0.1"
             echo "Using fallback host IP: $HOST_IP"
@@ -189,8 +156,7 @@ jobs:
         run: |
           echo "Testing Aiven MySQL connection..."
           echo "Certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
-          docker exec smarthire_laravel cat /var/www/html/certs/ca.pem | head -20 || true
+          docker exec smarthire_laravel ls -la /var/www/html/certs.pem || true
           echo ""
           echo "Calling your debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed || true
