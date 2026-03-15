@@ -42,6 +42,9 @@ COPY . .
 # Finalise composer
 RUN composer dump-autoload --optimize
 
+# Install dusk and behat
+RUN composer require --dev laravel/dusk --no-interaction
+
 # Recreate storage symlink inside container
 RUN php artisan storage:link || true
 

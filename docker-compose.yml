@@ -11,6 +11,7 @@ services:
     volumes:
       - ./laravel:/var/www/html
       - /var/www/html/vendor
+      - /var/www/html/public/storage
       - ./certs:/var/www/html/certs:ro
     networks:
       - smarthire
