@@ -48,7 +48,7 @@ class AuthController extends Controller
             }
 
             // IMPORTANT: Add JWT_SECRET to your .env file
-            $jwtSecret = env('JWT_SECRET');
+            $jwtSecret = config('app.jwt_secret');
             if (!$jwtSecret) {
                 return response()->json(['error' => 'JWT secret not configured'], 500);
             }
