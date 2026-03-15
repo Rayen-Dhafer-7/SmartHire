@@ -18,19 +18,28 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Start services with Docker Compose
-        run: docker compose up -d --build
+        run: docker compose up -d --build --wait
 
-      - name: Wait for services to be ready
+      - name: Show container status
+        run: docker compose ps -a
+
+      - name: Wait for Laravel to respond
         run: |
-          echo "Waiting for Selenium and Laravel to be ready..."
-          for i in {1..30}; do
-            if curl -sf http://localhost:4444/wd/hub/status > /dev/null && curl -sf http://localhost:8000 > /dev/null; then
-              echo "Services are ready."
+          echo "Waiting for Laravel to respond on port 8000..."
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ || true)
+            if [ "$code" != "000" ]; then
+              echo "Laravel responded with HTTP $code."
               break
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting... ($i/24)"
             sleep 5
           done
+          if [ "$code" = "000" ]; then
+            echo "Laravel did not respond. Container logs:"
+            docker compose logs laravel --tail=100
+            exit 1
+          fi
 
       - name: Run Behat tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty
