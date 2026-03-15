@@ -150,7 +150,7 @@ jobs:
           docker exec smarthire_laravel ls -la /var/www/html/certs/
           
           echo -e "\n2️⃣ Checking .env file in container:"
-          docker exec smarthire_laravel cat /var/www/html/.env | grep DB_SSL_CA || echo "DB_SSL_CA not found in .env"  # ← was MYSQL_ATTR_SSL_CA
+          docker exec smarthire_laravel cat /var/www/html/.env | grep -E "DB_HOST|DB_PORT|DB_CONNECTION" || true
           
           echo -e "\n3️⃣ Reloading Laravel configuration:"
           docker exec smarthire_laravel php artisan config:clear
