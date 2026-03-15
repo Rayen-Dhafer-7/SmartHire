@@ -139,7 +139,6 @@ jobs:
           fi
 
       
-      # Replace the debug step with this actual test
       - name: Test Aiven MySQL connection speed
         run: |
           echo "========================================="
@@ -149,16 +148,21 @@ jobs:
           echo "1️⃣ Checking certificate in container:"
           docker exec smarthire_laravel ls -la /var/www/html/certs/
           
-          echo -e "\n2️⃣ Checking environment variable in container:"
-          docker exec smarthire_laravel env | grep MYSQL_ATTR_SSL_CA
+          echo -e "\n2️⃣ Checking .env file in container:"
+          docker exec smarthire_laravel cat /var/www/html/.env | grep MYSQL_ATTR_SSL_CA || echo "MYSQL_ATTR_SSL_CA not found in .env"
           
-          echo -e "\n3️⃣ Calling debug-speed endpoint:"
+          echo -e "\n3️⃣ Reloading Laravel configuration:"
+          docker exec smarthire_laravel php artisan config:clear
+          docker exec smarthire_laravel php artisan config:cache
+          
+          echo -e "\n4️⃣ Checking environment variable after config cache:"
+          docker exec smarthire_laravel php artisan tinker --execute="echo env('MYSQL_ATTR_SSL_CA') ?: 'Not set';"
+          
+          echo -e "\n5️⃣ Calling debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed
           
-          echo -e "\n4️⃣ If it fails, checking PHP errors:"
-          docker exec smarthire_laravel php -r "error_reporting(E_ALL); ini_set('display_errors', 1); include '/var/www/html/public/index.php';" 2>&1 | head -50 || true
-
-
+          echo -e "\n6️⃣ If it fails, checking Laravel logs:"
+          docker exec smarthire_laravel cat /var/www/html/storage/logs/laravel.log 2>/dev/null | tail -50 || echo "No logs found"
 
 
 
