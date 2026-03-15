@@ -86,5 +86,14 @@ jobs:
         run: |
           sed -i 's|base_url:.*|base_url: http://vue:5174|' laravel/behat.yml
 
+      # Warm Vue app and wait for SPA to be ready (CI is slower; form must be in DOM before Behat fills it)
+      - name: Warm Vue app and wait for login page ready
+        run: |
+          echo "Warming Vue app (hit /login so dev server and SPA are ready)..."
+          curl -s -o /dev/null http://localhost:5174/
+          curl -s -o /dev/null http://localhost:5174/login
+          echo "Waiting 15s for Vue SPA to be fully ready before Behat..."
+          sleep 15
+
       - name: Run Behat tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty
