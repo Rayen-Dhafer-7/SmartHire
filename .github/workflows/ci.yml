@@ -35,6 +35,12 @@ jobs:
       - name: Start services with Docker Compose
         run: docker compose up -d --build --wait
 
+      - name: Fix Laravel permissions
+        run: |
+          docker exec smarthire_laravel chmod -R 775 storage bootstrap/cache
+          docker exec smarthire_laravel chown -R www-data:www-data storage bootstrap/cache
+
+
       - name: Show container status
         run: docker compose ps -a
 
