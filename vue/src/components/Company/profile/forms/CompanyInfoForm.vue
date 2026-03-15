@@ -46,7 +46,7 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Description</label>
-        <textarea class="form-control" rows="6" v-model="profile.description"></textarea>
+                <textarea class="form-control" id="industry_description" name="industry_description" rows="6" v-model="profile.description"></textarea>
       </div>
     </div>
   </div>

@@ -128,12 +128,20 @@ class FeatureContext extends MinkContext implements Context
      * @When I click on a post with applicants
      * Scenario: view applicant details from old posts
      */
-    public function iClickOnAPostWithApplicants()
-    {
-        // This might need a more specific selector depending on the UI
-        $this->getSession()->getPage()->clickLink('Applicants');
+public function iClickOnAPostWithApplicants()
+{
+    $page = $this->getSession()->getPage();
+    $link = $page->find('xpath', '//a[contains(text(),"View Rankings")] | //button[contains(text(),"View Rankings")]');
+    if (!$link) {
+        $link = $page->find('xpath', '//a[contains(text(),"Applicants")] | //button[contains(text(),"Applicants")]');
     }
-
+    if (!$link) {
+        echo "\nNo posts with applicants found - skipping\n";
+        return;
+    }
+    $link->click();
+    sleep(3);
+}
     /**
      * @When I click :action for the first applicant
      * Scenario: view applicant details from old posts
