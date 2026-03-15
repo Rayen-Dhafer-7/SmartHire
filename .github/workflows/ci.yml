@@ -142,58 +142,28 @@ jobs:
           fi
 
       
-          
-
-
-      # Test Aiven MySQL connection + diagnostics
-      - name: Debug MySQL connection
+      # Replace your debug-speed test with this
+      - name: Test Aiven MySQL connection speed
         run: |
-          echo "========================================="
-          echo "🔍 DEBUGGING DATABASE CONNECTION"
-          echo "========================================="
+          echo "Testing Aiven MySQL connection..."
           
-          echo "1️⃣ Checking certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
-          docker exec smarthire_laravel cat /var/www/html/certs/ca.pem | head -5
+          echo "1️⃣ Checking if port 8000 is listening:"
+          netstat -tln | grep 8000 || echo "Port 8000 not listening"
           
-          echo -e "\n2️⃣ Testing Laravel database connection with PHP script:"
-          docker exec smarthire_laravel php -r "
-            try {
-              \$pdo = new PDO(
-                'mysql:host=${{ secrets.DB_HOST }};port=${{ secrets.DB_PORT }};dbname=${{ secrets.DB_DATABASE }}',
-                '${{ secrets.DB_USERNAME }}',
-                '${{ secrets.DB_PASSWORD }}',
-                [
-                  PDO::MYSQL_ATTR_SSL_CA => '/var/www/html/certs/ca.pem',
-                  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-                ]
-              );
-              echo '✅ Raw PDO connection successful\n';
-              
-              \$stmt = \$pdo->query('SELECT 1 as test');
-              \$result = \$stmt->fetch(PDO::FETCH_ASSOC);
-              echo '✅ Query successful: ' . json_encode(\$result) . '\n';
-              
-            } catch (\Exception \$e) {
-              echo '❌ Connection failed: ' . \$e->getMessage() . '\n';
-            }
-          "
-          
-          echo -e "\n3️⃣ Checking Laravel logs:"
-          docker exec smarthire_laravel cat /var/www/html/storage/logs/laravel.log | tail -30 || echo "No logs found"
-          
-          echo -e "\n4️⃣ Calling your debug-speed endpoint:"
+          echo "2️⃣ Testing connection to Laravel container:"
+          curl -v http://127.0.0.1:8000/debug-speed || true
           curl -v http://localhost:8000/debug-speed || true
           
-          echo -e "\n5️⃣ Checking Apache error logs:"
-          docker exec smarthire_laravel cat /var/log/apache2/error.log | tail -20 || echo "No Apache logs found"
-
-
-
-
-
-
-
+          echo "3️⃣ Getting container IP and testing directly:"
+          CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' smarthire_laravel)
+          echo "Laravel container IP: $CONTAINER_IP"
+          curl -v http://$CONTAINER_IP:8000/debug-speed || true
+          
+          echo "4️⃣ Checking Docker port mapping:"
+          docker port smarthire_laravel
+          
+          echo "5️⃣ Testing from inside the container:"
+          docker exec smarthire_laravel curl -v http://127.0.0.1:8000/debug-speed || true
 
 
 
