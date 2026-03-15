@@ -38,16 +38,13 @@ jobs:
           # Laravel .env
           cp laravel/.env.example laravel/.env
           
-          # Update Laravel .env with database settings
           echo "DB_CONNECTION=mysql" >> laravel/.env
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> laravel/.env
           echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
-          
-          # Set DB_SSL_CA to the FILE PATH (not the content)
-          echo "DB_SSL_CA=certs/ca.pem" >> laravel/.env
+          echo "MYSQL_ATTR_SSL_CA=certs/ca.pem" >> laravel/.env  # Changed from DB_SSL_CA
           
           # Vue .env
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
