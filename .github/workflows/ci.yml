@@ -141,15 +141,57 @@ jobs:
             exit 1
           fi
 
-      # Test Aiven MySQL connection + latency - YOUR EXACT API
-      - name: Test Aiven MySQL connection speed
+      # Test Aiven MySQL connection + diagnostics
+      - name: Debug MySQL connection
         run: |
-          echo "Testing Aiven MySQL connection..."
-          echo "Certificate in container:"
+          echo "========================================="
+          echo "🔍 DEBUGGING DATABASE CONNECTION"
+          echo "========================================="
+          
+          echo "1️⃣ Checking certificate in container:"
           docker exec smarthire_laravel ls -la /var/www/html/certs/
-          echo ""
-          echo "Calling your debug-speed endpoint:"
+          docker exec smarthire_laravel cat /var/www/html/certs/ca.pem | head -5
+          
+          echo -e "\n2️⃣ Testing raw MySQL connection with SSL:"
+          docker exec smarthire_laravel bash -c "mysql --ssl-ca=/var/www/html/certs/ca.pem \
+            -h ${{ secrets.DB_HOST }} \
+            -P ${{ secrets.DB_PORT }} \
+            -u ${{ secrets.DB_USERNAME }} \
+            -p${{ secrets.DB_PASSWORD }} \
+            -e 'SELECT 1 as connection_test;'" || echo "❌ Raw MySQL connection failed"
+          
+          echo -e "\n3️⃣ Checking Laravel database config:"
+          docker exec smarthire_laravel php artisan tinker --execute="
+            echo 'DB Connection: ' . config('database.default') . \"\n\";
+            echo 'DB Host: ' . config('database.connections.mysql.host') . \"\n\";
+            echo 'DB Database: ' . config('database.connections.mysql.database') . \"\n\";
+            echo 'SSL CA Path: ' . config('database.connections.mysql.options')[" . PDO::MYSQL_ATTR_SSL_CA . "] . \"\n\";
+          "
+          
+          echo -e "\n4️⃣ Testing Laravel database connection:"
+          docker exec smarthire_laravel php artisan tinker --execute="
+            try {
+              DB::connection()->getPdo();
+              echo '✅ Laravel database connection successful\n';
+              
+              // Test a simple query
+              \$result = DB::select('SELECT 1 as test');
+              echo '✅ Query successful: ' . json_encode(\$result) . \"\n\";
+              
+            } catch (\Exception \$e) {
+              echo '❌ Laravel connection failed: ' . \$e->getMessage() . \"\n\";
+              echo 'File: ' . \$e->getFile() . ':' . \$e->getLine() . \"\n\";
+            }
+          "
+          
+          echo -e "\n5️⃣ Checking Laravel logs:"
+          docker exec smarthire_laravel cat /var/www/html/storage/logs/laravel.log | tail -30 || echo "No logs found"
+          
+          echo -e "\n6️⃣ Calling your debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed || true
+          
+          echo -e "\n7️⃣ Checking Apache error logs:"
+          docker exec smarthire_laravel cat /var/log/apache2/error.log | tail -20 || echo "No Apache logs found"
 
       # Warm SPA
       - name: Warm Vue app
