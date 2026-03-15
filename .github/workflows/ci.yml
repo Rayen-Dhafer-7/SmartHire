@@ -71,7 +71,8 @@ jobs:
           docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
           
           # Fix storage permissions
-          docker exec smarthire_laravel chmod -R 777 storage bootstrap/cache
+          docker exec --user root smarthire_laravel chmod -R 777 storage bootstrap/cache
+
 
       # Host IP detection
       - name: Set Vue .env and Behat base_url to host IP
