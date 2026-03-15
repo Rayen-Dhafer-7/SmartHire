@@ -163,6 +163,24 @@ jobs:
           echo "Calling http://localhost:8000/debug-speed"
           curl -s http://localhost:8000/debug-speed | jq . || curl -v http://localhost:8000/debug-speed
           
+
+
+      - name: Test worker login endpoint
+        run: |
+          echo "========================================="
+          echo "🔐 Testing worker login endpoint"
+          echo "========================================="
+          
+          echo "Calling POST http://localhost:8000/worker/login"
+          curl -s -X POST http://localhost:8000/worker/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"dd@dd.dd","password":"123456"}' | jq . || \
+          curl -v -X POST http://localhost:8000/worker/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"dd@dd.dd","password":"123456"}'
+
+
+
       # Warm SPA
       - name: Warm Vue app
         run: |
