@@ -139,28 +139,24 @@ jobs:
           fi
 
       
-      # Replace your debug-speed test with this
-      - name: Debug the debug-speed endpoint
+      # Replace the debug step with this actual test
+      - name: Test Aiven MySQL connection speed
         run: |
-          echo "1️⃣ Checking the actual debug-speed endpoint code:"
-          docker exec smarthire_laravel cat /var/www/html/routes/web.php | grep -A 20 -B 5 "debug-speed" || echo "Not in web.php"
-          docker exec smarthire_laravel cat /var/www/html/routes/api.php | grep -A 20 -B 5 "debug-speed" || echo "Not in api.php"
+          echo "========================================="
+          echo "🚀 Testing debug-speed endpoint"
+          echo "========================================="
           
-          echo -e "\n2️⃣ Checking Laravel error logs:"
-          docker exec smarthire_laravel php artisan tinker --execute="
-            \$logFile = '/var/www/html/storage/logs/laravel.log';
-            if (file_exists(\$logFile)) {
-              \$logs = file_get_contents(\$logFile);
-              \$lines = explode(\"\n\", \$logs);
-              \$lastLines = array_slice(\$lines, -50);
-              echo implode(\"\n\", \$lastLines);
-            } else {
-              echo 'No log file found';
-            }
-          "
+          echo "1️⃣ Checking certificate in container:"
+          docker exec smarthire_laravel ls -la /var/www/html/certs/
           
-          echo -e "\n3️⃣ Testing a simple Laravel route to verify Laravel is working:"
-          curl -v http://localhost:8000/ || true
+          echo -e "\n2️⃣ Checking environment variable in container:"
+          docker exec smarthire_laravel env | grep MYSQL_ATTR_SSL_CA
+          
+          echo -e "\n3️⃣ Calling debug-speed endpoint:"
+          curl -v http://localhost:8000/debug-speed
+          
+          echo -e "\n4️⃣ If it fails, checking PHP errors:"
+          docker exec smarthire_laravel php -r "error_reporting(E_ALL); ini_set('display_errors', 1); include '/var/www/html/public/index.php';" 2>&1 | head -50 || true
 
 
 
