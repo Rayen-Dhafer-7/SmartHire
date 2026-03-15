@@ -90,7 +90,8 @@ const fetchPostDetails = async () => {
     });
     
     const data = await response.json();
-    
+   
+    console.log(data)
     if (data.status === 'success') {
       post.value = data.post;
       applicants.value = data.applicants || [];

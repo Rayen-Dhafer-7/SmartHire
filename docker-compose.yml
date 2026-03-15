@@ -9,10 +9,12 @@ services:
     restart: unless-stopped
     ports:
       - "8000:80"
+    user: "www-data:www-data"  # Add this line
     volumes:
       - ./laravel:/var/www/html
       - /var/www/html/vendor
-      - /var/www/html/public/storage
+      - storage_data:/var/www/html/storage/app/public
+      - public_storage_data:/var/www/html/public/storage
       - ./certs:/var/www/html/certs:ro
     networks:
       - smarthire
@@ -54,3 +56,8 @@ services:
 networks:
   smarthire:
     driver: bridge
+
+# ✅ ADD THIS SECTION
+volumes:
+  storage_data:
+  public_storage_data:

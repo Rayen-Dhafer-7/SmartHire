@@ -206,7 +206,7 @@ const saveProfile = async () => {
       formData.append('logo', profile.value.logo);
     }
 
-    const response = await axios.put(`${import.meta.env.VITE_API_URL}/company/update`, formData, { 
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/company/update`, formData, { 
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'multipart/form-data'

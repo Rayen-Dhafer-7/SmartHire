@@ -66,7 +66,7 @@ Route::prefix('worker')->group(function () {
  Route::prefix('company')->group(function () {
     Route::post('/register', [CompanyController::class, 'register']);
     Route::get('/info', [CompanyController::class, 'getinfo']);
-    Route::put('/update', [CompanyController::class, 'updateinfo']);
+    Route::post('/update', [CompanyController::class, 'updateinfo']);
     Route::put('/update-password', [CompanyController::class, 'updatepass']);
 
     Route::post('/send-reset-mail', [AuthController::class, 'sendMail']);

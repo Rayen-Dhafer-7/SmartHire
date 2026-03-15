@@ -32,133 +32,113 @@ class WorkerController extends Controller
         );
     }
 
-    public function register(Request $request)
-    {
+public function register(Request $request)
+{
+    \Log::info('Worker Registration Request:', $request->all());
+    
+    $validator = Validator::make($request->all(), [
+        'fullName' => 'required|string|max:255',
+        'email'    => 'required|email',
+        'password' => 'required|string',
+        'location' => 'nullable|string|max:255',
+        'industry' => 'nullable|string',
+        'profile'  => 'nullable|image|max:2048',
+    ]);
 
-        \Log::info('Worker Registration Request:', $request->all());
-        
-        $validator = Validator::make($request->all(), [
-            'fullName' => 'required|string|max:255',
-            'email'    => 'required|email',
-            'password' => 'required|string',
-            'location' => 'nullable|string|max:255',
-            'industry' => 'nullable|string',
-            'profile'  => 'nullable|image|max:2048', // Max 2MB
-        ]);
+    if ($validator->fails()) {
+        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+    }
 
-        if ($validator->fails()) {
-            \Log::error('Worker validation failed:', $validator->errors()->toArray());
+    try {
+        $pdo = $this->pdo();
+
+        // Check email
+        $check = $pdo->prepare("SELECT id FROM workers WHERE email = ?");
+        $check->execute([$request->email]);
+        if ($check->fetch()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => ['email' => ['Email already exists']]
             ], 422);
         }
 
-        try {
-            $pdo = $this->pdo();
+        // ========== FIXED: Handle photo upload ==========
+        $photoUrl = null;
+        if ($request->hasFile('profile')) {
+            $file = $request->file('profile');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            
+            // ✅ FIXED: Store correctly (without extra 'public' in path)
+            $path = $file->storeAs('workers/photos', $filename, 'public');
+            
+            // ✅ FIXED: Generate clean URL without /storage/public/
+            $photoUrl = asset('storage/workers/photos/' . $filename);
 
-            // Check email
-            $check = $pdo->prepare("SELECT id FROM workers WHERE email = ?");
-            $check->execute([$request->email]);
-
-            if ($check->fetch()) {
-                \Log::warning('Duplicate email attempt:', ['email' => $request->email]);
-                return response()->json([
-                    'status' => 'error',
-                    'errors' => ['email' => ['Email already exists']]
-                ], 422);
+            // ✅ ALSO ENSURE FILE IS ACCESSIBLE IN PUBLIC STORAGE
+            $sourcePath = storage_path('app/public/workers/photos/' . $filename);
+            $targetPath = public_path('storage/workers/photos/' . $filename);
+            
+            // Create directory if it doesn't exist
+            if (!file_exists(dirname($targetPath))) {
+                mkdir(dirname($targetPath), 0755, true);
             }
-
-            // Handle photo upload
-            $photoUrl = null;
-            if ($request->hasFile('profile')) {
-                $file = $request->file('profile');
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                
-                // Save to storage (you can change this to cloud storage)
-                $path = $file->storeAs('public/workers/photos', $filename);
-                $photoUrl = Storage::url($path);
-                
-                \Log::info('Profile photo uploaded:', [
-                    'filename' => $filename,
-                    'path' => $path,
-                    'url' => $photoUrl
-                ]);
+            
+            // Create symbolic link or copy file
+            if (!file_exists($targetPath)) {
+                // Try symlink first
+                if (!@symlink($sourcePath, $targetPath)) {
+                    // If symlink fails, copy the file
+                    copy($sourcePath, $targetPath);
+                }
             }
-
-            $workerId = 'WRK_' . uniqid(); 
-
-            $stmt = $pdo->prepare(
-                "INSERT INTO workers (id,fullname, email, password, photoUrl) VALUES (?, ?, ?, ?, ?)"
-            );
-
-            $stmt->execute([
-                $workerId,     
-                $request->fullName,
-                $request->email,
-                Hash::make($request->password),
-                $photoUrl
-            ]);
-
-       
             
-            $urlsCompteId = 'URL_' . uniqid(); 
-
-            // Insert with custom ID for UrlsCompte table
-            $urlsStmt = $pdo->prepare(
-                "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'worker')"
-            );
-            $urlsStmt->execute([$urlsCompteId, $workerId]);
-
-
-            
-            $workerCvId = 'CV_' . uniqid(); 
-
-            // Insert with custom ID for WorkerCV table
-            $cvStmt = $pdo->prepare(
-                "INSERT INTO WorkerCV (id, worker_id) VALUES (?, ?)"
-            );
-            $cvStmt->execute([$workerCvId, $workerId]);
-
-
-            \Log::info('Worker registered successfully:', [
-                'id' => $workerId,
-                'email' => $request->email,
-                'has_photo' => !empty($photoUrl)
+            \Log::info('Profile photo uploaded:', [
+                'filename' => $filename,
+                'path' => $path,
+                'url' => $photoUrl
             ]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Worker registered successfully',
-                'worker_id' => $workerId,
-                'fullname' => $request->fullName,
-                'email' => $request->email,
-                'photoUrl' => $photoUrl
-            ], 201);
-
-        } catch (PDOException $e) {
-            \Log::error('Database error in worker registration:', [
-                'error' => $e->getMessage(),
-                'code' => $e->getCode()
-            ]);
-            
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Database connection failed',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Exception $e) {
-            \Log::error('General error in worker registration:', [
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'status' => 'error',
-                'message' => 'An unexpected error occurred',
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        $workerId = 'WRK_' . uniqid(); 
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO workers (id, fullname, email, password, photoUrl) VALUES (?, ?, ?, ?, ?)"
+        );
+
+        $stmt->execute([
+            $workerId,     
+            $request->fullName,
+            $request->email,
+            Hash::make($request->password),
+            $photoUrl
+        ]);
+
+        $urlsCompteId = 'URL_' . uniqid(); 
+        $urlsStmt = $pdo->prepare(
+            "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'worker')"
+        );
+        $urlsStmt->execute([$urlsCompteId, $workerId]);
+
+        $workerCvId = 'CV_' . uniqid(); 
+        $cvStmt = $pdo->prepare(
+            "INSERT INTO WorkerCV (id, worker_id) VALUES (?, ?)"
+        );
+        $cvStmt->execute([$workerCvId, $workerId]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Worker registered successfully',
+            'worker_id' => $workerId,
+            'fullname' => $request->fullName,
+            'email' => $request->email,
+            'photoUrl' => $photoUrl
+        ], 201);
+
+    } catch (PDOException $e) {
+        \Log::error('Database error:', ['error' => $e->getMessage()]);
+        return response()->json(['status' => 'error', 'message' => 'Database connection failed'], 500);
     }
+}
     
 
     public function getinfo(Request $request)
@@ -221,8 +201,6 @@ class WorkerController extends Controller
 
 public function updateinfo(Request $request)
 {
-   
-
     \Log::info('--- WORKER UPDATE INFO START ---');
     \Log::info('Request data:', $request->all());
     \Log::info('Has profile file:', ['profile' => $request->hasFile('profile')]);
@@ -240,49 +218,70 @@ public function updateinfo(Request $request)
     ]);
 
     if ($validator->fails()) {
-        \Log::error('Validation failed:', $validator->errors()->toArray());
         return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
     }
 
     try {
-        \Log::info('Connecting to database...');
         $pdo = $this->pdo();
-
-        \Log::info('Decoding token...');
         $workerId = $this->getWorkerIdFromToken($request->bearerToken());
-        \Log::info('Worker ID:', ['worker_id' => $workerId]);
 
         // ================= PHOTO =================
-        \Log::info('Fetching current photo...');
         $photoStmt = $pdo->prepare("SELECT photoUrl FROM workers WHERE id = ?");
         $photoStmt->execute([$workerId]);
         $currentPhoto = $photoStmt->fetchColumn();
-
-        \Log::info('Current photo:', ['photo' => $currentPhoto]);
 
         $newPhotoUrl = $currentPhoto;
  
         if ($request->hasFile('profile')) {
             \Log::info('New profile photo detected');
 
+            // Delete old photo if exists
             if ($currentPhoto) {
-                $oldFile = 'public/workers/photos/' . basename($currentPhoto);
+                $oldFilename = basename($currentPhoto);
+                $oldFile = 'public/workers/photos/' . $oldFilename;
                 \Log::info('Deleting old photo:', ['path' => $oldFile]);
                 Storage::delete($oldFile);
+                
+                // Also delete from public storage
+                $oldPublicFile = public_path('storage/workers/photos/' . $oldFilename);
+                if (file_exists($oldPublicFile)) {
+                    unlink($oldPublicFile);
+                    \Log::info('Deleted old photo from public storage');
+                }
             }
 
             $file = $request->file('profile');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             \Log::info('Storing new photo:', ['filename' => $filename]);
 
-            $path = $file->storeAs('public/workers/photos', $filename);
-            $newPhotoUrl = Storage::url($path);
+            // ✅ STORE IN STORAGE (correct path)
+            $path = $file->storeAs('workers/photos', $filename, 'public');
+            
+            // ✅ GENERATE CLEAN URL
+            $newPhotoUrl = asset('storage/workers/photos/' . $filename);
 
-            \Log::info('New photo stored:', ['url' => $newPhotoUrl]);
+            // ✅ AUTO-COPY TO PUBLIC STORAGE (THIS IS CRITICAL!)
+            $sourcePath = storage_path('app/public/workers/photos/' . $filename);
+            $targetPath = public_path('storage/workers/photos/' . $filename);
+            $targetDir = dirname($targetPath);
+            
+            // Create directory if it doesn't exist
+            if (!file_exists($targetDir)) {
+                mkdir($targetDir, 0755, true);
+                \Log::info('Created directory:', ['dir' => $targetDir]);
+            }
+            
+            // Copy file to public storage
+            if (!file_exists($targetPath)) {
+                copy($sourcePath, $targetPath);
+                chmod($targetPath, 0644);
+                \Log::info('File auto-copied to public storage:', ['path' => $targetPath]);
+            }
+
+            \Log::info('New photo stored and published:', ['url' => $newPhotoUrl]);
         }
 
         // ================= UPDATE WORKER =================
-        \Log::info('Updating worker info...');
         $stmt = $pdo->prepare("
             UPDATE workers 
             SET fullname = ?, email = ?, photoUrl = ?, location = ?, industry = ?
@@ -298,16 +297,11 @@ public function updateinfo(Request $request)
             $workerId
         ]);
 
-        \Log::info('Worker table updated successfully');
-
         // ================= URLS =================
-        \Log::info('Updating URLs...');
         $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM UrlsCompte WHERE user_id = ? AND user_type = 'worker'");
         $checkStmt->execute([$workerId]);
 
         if ($checkStmt->fetchColumn() > 0) {
-            \Log::info('UrlsCompte exists, updating');
-
             $urlsStmt = $pdo->prepare("
                 UPDATE UrlsCompte SET
                     url_linkedin = ?,
@@ -324,11 +318,7 @@ public function updateinfo(Request $request)
                 $request->url_gmail,
                 $workerId
             ]);
-
-            \Log::info('URLs updated');
         }
-
-        \Log::info('--- WORKER UPDATE INFO SUCCESS ---');
 
         return response()->json([
             'status' => 'success', 

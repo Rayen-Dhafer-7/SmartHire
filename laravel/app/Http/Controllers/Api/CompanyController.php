@@ -32,25 +32,19 @@ class CompanyController extends Controller
 
 public function register(Request $request)
 {
-    
-
     \Log::info('Company Registration Request:', $request->all());
     
     $validator = Validator::make($request->all(), [
         'companyName' => 'required|string|max:255',
         'email'       => 'required|email',
-        'password' => 'required|string',
+        'password'    => 'required|string',
         'location'    => 'required|string|max:255',
         'industry'    => 'required|string',
-        'logo'        => 'nullable|image|max:2048',
+        'logo'        => 'nullable|image|max:2048', // Keep as 'logo'
     ]);
 
     if ($validator->fails()) {
-        \Log::error('Company validation failed:', $validator->errors()->toArray());
-        return response()->json([
-            'status' => 'error',
-            'errors' => $validator->errors()
-        ], 422);
+        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
     }
 
     try {
@@ -59,41 +53,50 @@ public function register(Request $request)
         // Check email
         $check = $pdo->prepare("SELECT id FROM companies WHERE email = ?");
         $check->execute([$request->email]);
-
         if ($check->fetch()) {
-            \Log::warning('Duplicate company email attempt:', ['email' => $request->email]);
             return response()->json([
                 'status' => 'error',
                 'errors' => ['email' => ['Email already exists']]
             ], 422);
         }
 
-        // Handle logo upload
-        $photoUrl = null;
+        // ========== FIXED: Handle logo upload ==========
+        $logoUrl = null; // ✅ Use $logoUrl (matches column name)
 
-        if ($request->hasFile('profile')) {
-            $file = $request->file('profile');
-
+        if ($request->hasFile('logo')) { // ✅ Check 'logo' (matches validation)
+            $file = $request->file('logo');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
-            // نفس company — استعمل disk public
-            $path = $file->storeAs('workers/photos', $filename, 'public');
+            // ✅ Store in companies/logos (correct folder)
+            $path = $file->storeAs('companies/logos', $filename, 'public');
 
-            // full URL
-            $photoUrl = url(Storage::url($path));
+            // ✅ Generate clean URL without /storage/public/
+            $logoUrl = asset('storage/companies/logos/' . $filename);
 
-            \Log::info('Profile photo uploaded:', [
+            // ✅ Also ensure file is accessible in public storage
+            $sourcePath = storage_path('app/public/companies/logos/' . $filename);
+            $targetPath = public_path('storage/companies/logos/' . $filename);
+            
+            if (!file_exists(dirname($targetPath))) {
+                mkdir(dirname($targetPath), 0755, true);
+            }
+            
+            if (!file_exists($targetPath)) {
+                copy($sourcePath, $targetPath);
+                chmod($targetPath, 0644);
+            }
+
+            \Log::info('Logo uploaded:', [
                 'filename' => $filename,
                 'path' => $path,
-                'url' => $photoUrl
+                'url' => $logoUrl
             ]);
         }
-
 
         // Generate custom company ID
         $companyId = 'CMP_' . uniqid(); 
 
-        // Insert company with custom ID
+        // Insert company
         $stmt = $pdo->prepare(
             "INSERT INTO companies (id, companyName, email, password, location, industry, logoUrl) 
              VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -106,22 +109,15 @@ public function register(Request $request)
             Hash::make($request->password),
             $request->location,
             $request->industry,
-            $logoUrl
+            $logoUrl // ✅ Using $logoUrl
         ]);
 
-            $urlsCompteId = 'URL_' . uniqid(); 
-
-            // Insert with custom ID for UrlsCompte table
-            $urlsStmt = $pdo->prepare(
-                "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'company')"
-            );
-            $urlsStmt->execute([$urlsCompteId, $companyId]);
-
-
-        \Log::info('Company registered successfully:', [
-            'id' => $companyId,
-            'companyName' => $request->companyName
-        ]);
+        // Create UrlsCompte entry
+        $urlsCompteId = 'URL_' . uniqid(); 
+        $urlsStmt = $pdo->prepare(
+            "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'company')"
+        );
+        $urlsStmt->execute([$urlsCompteId, $companyId]);
 
         return response()->json([
             'status' => 'success',
@@ -129,27 +125,19 @@ public function register(Request $request)
             'company_id' => $companyId,
             'companyName' => $request->companyName,
             'email' => $request->email,
-            'logoUrl' => $logoUrl
+            'logoUrl' => $logoUrl // ✅ Using $logoUrl
         ], 201);
 
     } catch (PDOException $e) {
-        \Log::error('Database error in company registration:', ['error' => $e->getMessage()]);
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Database connection failed'
-        ], 500);
+        \Log::error('Database error:', ['error' => $e->getMessage()]);
+        return response()->json(['status' => 'error', 'message' => 'Database connection failed'], 500);
     }
 }
 
-
- 
-
-
 public function updateinfo(Request $request)
 {
+    \Log::info('Company Update Request:', $request->all());
     
-
-    // Validation
     $validator = Validator::make($request->all(), [
         'companyName' => 'required|string|max:255',
         'email' => 'required|email',
@@ -173,37 +161,71 @@ public function updateinfo(Request $request)
         $pdo = $this->pdo();
         $companyId = $this->getCompanyIdFromToken($request->bearerToken());
 
-        // --- Handle Logo ---
+        // Handle Logo
         $getLogoStmt = $pdo->prepare("SELECT logoUrl FROM companies WHERE id = ?");
         $getLogoStmt->execute([$companyId]);
         $currentLogoUrl = $getLogoStmt->fetchColumn();
         $newLogoUrl = $currentLogoUrl;
 
         if ($request->hasFile('logo')) {
+            \Log::info('New logo detected');
             $file = $request->file('logo');
 
             // Delete old logo if exists
             if ($currentLogoUrl) {
                 $oldFilename = basename(parse_url($currentLogoUrl, PHP_URL_PATH));
                 Storage::delete('public/companies/logos/' . $oldFilename);
+                
+                // Also delete from public storage
+                $oldPublicFile = public_path('storage/companies/logos/' . $oldFilename);
+                if (file_exists($oldPublicFile)) {
+                    unlink($oldPublicFile);
+                }
             }
 
-            // Store new logo
+            // Store correctly
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('public/companies/logos', $filename);
-            $newLogoUrl = Storage::url($path);
+            $path = $file->storeAs('companies/logos', $filename, 'public');
+            
+            // Generate clean URL
+            $newLogoUrl = asset('storage/companies/logos/' . $filename);
+            
+            // ✅ ENSURE FILE IS ACCESSIBLE IN PUBLIC STORAGE
+            $sourcePath = storage_path('app/public/companies/logos/' . $filename);
+            $targetPath = public_path('storage/companies/logos/' . $filename);
+            
+            // Create directory if it doesn't exist
+            if (!file_exists(dirname($targetPath))) {
+                mkdir(dirname($targetPath), 0755, true);
+            }
+            
+            // Create symbolic link or copy file
+            if (!file_exists($targetPath)) {
+                // Try symlink first (better for disk space)
+                if (!@symlink($sourcePath, $targetPath)) {
+                    // If symlink fails, copy the file
+                    copy($sourcePath, $targetPath);
+                }
+            }
+            
+            \Log::info('New logo stored and published:', [
+                'url' => $newLogoUrl,
+                'source' => $sourcePath,
+                'target' => $targetPath
+            ]);
         }
 
-        // --- Update main company info ---
-        $stmt = $pdo->prepare(
-            "UPDATE companies SET 
+        // Update company info
+        $stmt = $pdo->prepare("
+            UPDATE companies SET 
                 companyName = ?, 
                 email = ?, 
                 location = ?, 
                 industry = ?, 
                 logoUrl = ?
-             WHERE id = ?"
-        );
+            WHERE id = ?
+        ");
+        
         $stmt->execute([
             $request->companyName,
             $request->email,
@@ -213,58 +235,47 @@ public function updateinfo(Request $request)
             $companyId
         ]);
 
-        // --- Update or Insert URLs in UrlsCompte ---
+        // Update URLs
         $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM UrlsCompte WHERE user_id = ? AND user_type = 'company'");
         $checkStmt->execute([$companyId]);
         $exists = $checkStmt->fetchColumn() > 0;
 
         if ($exists) {
-            // Update existing row
-            $urlsStmt = $pdo->prepare(
-                "UPDATE UrlsCompte SET
+            $urlsStmt = $pdo->prepare("
+                UPDATE UrlsCompte SET
                     url_website = ?,
                     url_linkedin = ?,
                     url_twitter = ?,
                     url_facebook = ?,
                     url_instagram = ?,
                     url_gmail = ?
-                 WHERE user_id = ? AND user_type = 'company'"
-            );
+                WHERE user_id = ? AND user_type = 'company'
+            ");
             $urlsStmt->execute([
-                $request->url_website ?: null,
-                $request->url_linkedin ?: null,
-                $request->url_twitter ?: null,
-                $request->url_facebook ?: null,
-                $request->url_instagram ?: null,
-                $request->url_gmail ?: null,
+                $request->url_website,
+                $request->url_linkedin,
+                $request->url_twitter,
+                $request->url_facebook,
+                $request->url_instagram,
+                $request->url_gmail,
                 $companyId
-            ]);
-        } else {
-            // Insert new row
-            $insertStmt = $pdo->prepare(
-                "INSERT INTO UrlsCompte 
-                    (user_id, user_type, url_website, url_linkedin, url_twitter, url_facebook, url_instagram, url_gmail)
-                 VALUES (?, 'company', ?, ?, ?, ?, ?, ?)"
-            );
-            $insertStmt->execute([
-                $companyId,
-                $request->url_website ?: null,
-                $request->url_linkedin ?: null,
-                $request->url_twitter ?: null,
-                $request->url_facebook ?: null,
-                $request->url_instagram ?: null,
-                $request->url_gmail ?: null
             ]);
         }
 
-        return response()->json(['status' => 'success', 'message' => 'Company info updated successfully']);
+        return response()->json([
+            'status' => 'success', 
+            'message' => 'Company info updated successfully',
+            'logoUrl' => $newLogoUrl
+        ]);
 
-    } catch (PDOException $e) {
-        return response()->json(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()], 500);
+    } catch (\Exception $e) {
+        \Log::error('Company update error:', ['message' => $e->getMessage()]);
+        return response()->json([
+            'status' => 'error', 
+            'message' => 'Server error: ' . $e->getMessage()
+        ], 500);
     }
 }
-
-
 
 public function updatepass(Request $request)
 {
@@ -728,8 +739,6 @@ public function getPostsOld(Request $request)
 
 public function getpostdetails(Request $request)
 {
-    
-
     try {
         $pdo = $this->pdo();
         
@@ -827,6 +836,19 @@ public function getpostdetails(Request $request)
         $applicantsStmt->execute([$postId]);
         $applicants = $applicantsStmt->fetchAll(PDO::FETCH_ASSOC);
         
+        // ========== FIX PHOTO URLs ==========
+        foreach ($applicants as &$applicant) {
+            if (!empty($applicant['photoUrl'])) {
+                // Remove /storage/public/ from URL
+                $applicant['photoUrl'] = str_replace('/storage/public/', '/storage/', $applicant['photoUrl']);
+                
+                // Ensure port 8000 is present for localhost
+                if (strpos($applicant['photoUrl'], 'http://localhost/') === 0) {
+                    $applicant['photoUrl'] = str_replace('http://localhost/', 'http://localhost:8000/', $applicant['photoUrl']);
+                }
+            }
+        }
+        
         // Get skill results for each applicant
         foreach ($applicants as &$applicant) {
             $skillResultsStmt = $pdo->prepare("
@@ -874,7 +896,11 @@ public function getpostdetails(Request $request)
             $applicant['linkedin'] = $applicant['linkedin'] ?? '#';
             $applicant['website'] = $applicant['website'] ?? null;
             $applicant['email'] = $applicant['email'];
-            $applicant['photoUrl'] = $applicant['photoUrl'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($applicant['name']);
+            
+            // Use fixed photoUrl or fallback to avatar
+            if (empty($applicant['photoUrl'])) {
+                $applicant['photoUrl'] = 'https://ui-avatars.com/api/?name=' . urlencode($applicant['name']);
+            }
             
             // Remove unnecessary fields
             unset($applicant['worker_id']);
@@ -885,7 +911,7 @@ public function getpostdetails(Request $request)
             unset($applicant['test_date']);
             unset($applicant['cv_link']);
             unset($applicant['score_percentage']);
-            unset($applicant['gmail']); // Remove gmail if not needed
+            unset($applicant['gmail']);
         }
         
         // Format post info - ONLY title, posted_date, deadline
