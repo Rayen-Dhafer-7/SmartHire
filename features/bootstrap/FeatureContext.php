@@ -131,15 +131,37 @@ class FeatureContext extends MinkContext implements Context
 public function iClickOnAPostWithApplicants()
 {
     $page = $this->getSession()->getPage();
+    
+    // Debug: dump page text to see what's there
+    echo "\n--- Old Posts Page Text ---\n";
+    echo $page->getText();
+    echo "\n---------------------------\n";
+    
+    // Try View Rankings first
     $link = $page->find('xpath', '//a[contains(text(),"View Rankings")] | //button[contains(text(),"View Rankings")]');
+    
     if (!$link) {
+        echo "\nView Rankings not found, trying Applicants...\n";
         $link = $page->find('xpath', '//a[contains(text(),"Applicants")] | //button[contains(text(),"Applicants")]');
     }
+    
     if (!$link) {
         echo "\nNo posts with applicants found - skipping\n";
         return;
     }
-    $link->click();
+    
+    echo "\nFound link: " . $link->getText() . " - clicking...\n";
+    
+    try {
+        $link->click();
+    } catch (\Exception $e) {
+        echo "\nNormal click failed, trying JS click...\n";
+        $this->getSession()->executeScript(
+            "arguments[0].click();", 
+            [$link]
+        );
+    }
+    
     sleep(3);
 }
     /**
