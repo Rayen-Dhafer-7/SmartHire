@@ -68,11 +68,16 @@ class FeatureContext extends MinkContext implements Context
      */
     public function iShouldBeLoggedIn()
     {
-        // Assuming a frequent UI element exists after login like a logout button or dashboard title
-        // Adjust based on your actual UI
-        $this->assertSession()->pageTextContains('Dashboard');
+        sleep(3);
+        $url = $this->getSession()->getCurrentUrl();
+        if (strpos($url, '/login') !== false) {
+            throw new \Exception('Still on login page - login failed. URL: ' . $url);
+        }
+        $text = $this->getSession()->getPage()->getText();
+        if (strpos($text, 'SmartHire') === false) {
+            throw new \Exception('SmartHire not found on page. URL: ' . $url);
+        }
     }
-
     /**
      * @Given I am on the Company Profile Page
      * Scenario: update company profile
