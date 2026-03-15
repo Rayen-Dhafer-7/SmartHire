@@ -31,48 +31,32 @@ jobs:
           
           echo "Certificate created at certs/ca.pem"
           ls -la certs/
-
       # --- Prepare env files for CI ---
       - name: Prepare env files for CI
         run: |
+          # Laravel .env
           cp laravel/.env.example laravel/.env
           
-          # Replace in-place (all these keys already exist in .env.example)
-          APP_KEY="base64:$(openssl rand -base64 32)"
-          sed -i "s|APP_KEY=|APP_KEY=${APP_KEY}|" laravel/.env
-          sed -i "s|DB_CONNECTION=.*|DB_CONNECTION=mysql|" laravel/.env
-          sed -i "s|# DB_HOST=.*|DB_HOST=${{ secrets.DB_HOST }}|" laravel/.env
-          sed -i "s|# DB_PORT=.*|DB_PORT=${{ secrets.DB_PORT }}|" laravel/.env
-          sed -i "s|# DB_DATABASE=.*|DB_DATABASE=${{ secrets.DB_DATABASE }}|" laravel/.env
-          sed -i "s|# DB_USERNAME=.*|DB_USERNAME=${{ secrets.DB_USERNAME }}|" laravel/.env
-          sed -i "s|# DB_PASSWORD=.*|DB_PASSWORD=${{ secrets.DB_PASSWORD }}|" laravel/.env
+          echo "DB_CONNECTION=mysql" >> laravel/.env
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> laravel/.env
+          echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
+          echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
+          echo "MYSQL_ATTR_SSL_CA=certs/ca.pem" >> laravel/.env  # Changed from DB_SSL_CA
           
-          # Append only what doesn't exist in .env.example
-          echo "DB_SSL_CA=certs/ca.pem" >> laravel/.env
-          
+          # Vue .env
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
-
-
-      - name: Debug env file
-        run: |
-          echo "--- laravel/.env DB section ---"
-          grep -E "DB_|APP_KEY" laravel/.env
-          
-          echo "--- laravel/.env.example DB section ---"
-          grep -E "DB_|APP_KEY" laravel/.env.example
-
       - name: Install Vue node_modules for CI
         run: |
           cd vue
           npm install --include=dev
           npm install vite@latest --save-dev
-
       - name: Start services with Docker Compose
         run: |
           docker compose up -d --build --wait
           sleep 10
-
       - name: Show container status
         run: docker compose ps -a
 
@@ -82,17 +66,8 @@ jobs:
           echo "Checking certificate in container:"
           docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
           
-          # Fix ownership of .env so www-data can read it
-          docker exec --user root smarthire_laravel chown www-data:www-data /var/www/html/.env
-          docker exec --user root smarthire_laravel chmod 644 /var/www/html/.env
-          
           # Fix storage permissions
-          docker exec --user root smarthire_laravel chmod -R 777 storage bootstrap/cache
-      - name: Restart Laravel to pick up .env
-        run: |
-          docker compose restart laravel
-          sleep 5
-
+          docker exec smarthire_laravel chmod -R 777 storage bootstrap/cache
       # Host IP detection
       - name: Set Vue .env and Behat base_url to host IP
         run: |
@@ -112,15 +87,14 @@ jobs:
           if [ -f laravel/behat.yml ]; then
             sed -i "s|base_url:.*|base_url: http://${HOST_IP}:5174|" laravel/behat.yml
           fi
-
       - name: Restart Vue to pick up .env
         run: docker compose restart vue
 
       - name: Prepare Laravel (No migrations)
         run: |
+          docker exec smarthire_laravel php artisan key:generate --force
           docker exec smarthire_laravel php artisan config:clear
           docker exec smarthire_laravel php artisan config:cache
-
       - name: Wait for Laravel to respond
         run: |
           echo "Waiting for Laravel..."
@@ -138,7 +112,6 @@ jobs:
             docker compose logs laravel --tail=80
             exit 1
           fi
-
       - name: Wait for Vue dev server
         run: |
           echo "Polling Vue..."
@@ -156,70 +129,21 @@ jobs:
             docker compose logs vue --tail=200
             exit 1
           fi
-
-
-      # ✅ ADD this new step here, before Test Aiven MySQL connection speed
-      - name: Direct PHP connection test
-        run: |
-          docker exec --user root smarthire_laravel php -r "
-            \$host = trim(file_get_contents('/var/www/html/.env'));
-            \$env = [];
-            foreach (explode(PHP_EOL, \$host) as \$line) {
-              if (strpos(\$line, '=') !== false && \$line[0] !== '#') {
-                [\$k, \$v] = explode('=', \$line, 2);
-                \$env[trim(\$k)] = trim(\$v);
-              }
-            }
-            echo 'DB_HOST: ' . (\$env['DB_HOST'] ?? 'MISSING') . PHP_EOL;
-            echo 'DB_PORT: ' . (\$env['DB_PORT'] ?? 'MISSING') . PHP_EOL;
-            echo 'DB_DATABASE: ' . (\$env['DB_DATABASE'] ?? 'MISSING') . PHP_EOL;
-            echo 'DB_SSL_CA: ' . (\$env['DB_SSL_CA'] ?? 'MISSING') . PHP_EOL;
-            
-            echo PHP_EOL . 'Attempting TCP connection...' . PHP_EOL;
-            \$sock = @fsockopen(\$env['DB_HOST'], (int)\$env['DB_PORT'], \$errno, \$errstr, 5);
-            if (\$sock) {
-              echo 'TCP connection: SUCCESS' . PHP_EOL;
-              fclose(\$sock);
-            } else {
-              echo 'TCP connection FAILED: ' . \$errstr . ' (' . \$errno . ')' . PHP_EOL;
-            }
-          "
-
       
-      - name: Test Aiven MySQL connection speed
+      - name: Test updated debug-speed endpoint
         run: |
           echo "========================================="
-          echo "🚀 Testing debug-speed endpoint"
+          echo "🚀 Testing updated debug-speed endpoint"
           echo "========================================="
           
-          echo "1️⃣ Checking certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
+          echo "Calling http://localhost:8000/debug-speed"
+          curl -s http://localhost:8000/debug-speed | jq . || curl -v http://localhost:8000/debug-speed
           
-          echo -e "\n2️⃣ Checking .env file in container:"
-          docker exec smarthire_laravel cat /var/www/html/.env | grep -E "DB_HOST|DB_PORT|DB_CONNECTION" || true
-          
-          echo -e "\n3️⃣ Reloading Laravel configuration:"
-          docker exec smarthire_laravel php artisan config:clear
-          docker exec smarthire_laravel php artisan config:cache
-          
-          echo -e "\n4️⃣ Checking environment variable after config cache:"
-          docker exec -e HOME=/tmp smarthire_laravel php artisan tinker --execute="echo env('DB_SSL_CA') ?: 'Not set';"  # ← fixed HOME + var name
-          
-          echo -e "\n5️⃣ Calling debug-speed endpoint:"
-          curl -v http://localhost:8000/debug-speed
-          
-          echo -e "\n6️⃣ If it fails, checking Laravel logs:"
-          docker exec smarthire_laravel cat /var/www/html/storage/logs/laravel.log 2>/dev/null | tail -50 || echo "No logs found"
-
-
-
-
       # Warm SPA
       - name: Warm Vue app
         run: |
           curl -s -o /dev/null http://localhost:5174/
           curl -s -o /dev/null http://localhost:5174/login
           sleep 15
-
       - name: Run Behat tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty || true
