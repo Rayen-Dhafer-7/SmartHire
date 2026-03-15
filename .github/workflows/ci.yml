@@ -18,11 +18,11 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       # --- Prepare certificates and env files ---
-      - name: Create certificates directory
+      - name: Create certificates directory locally
         run: |
           mkdir -p certs
           mkdir -p laravel/certs
-          sudo chmod -R 777 certs laravel/certs
+          chmod 777 certs laravel/certs || true
 
       - name: Create CA certificate from secret
         run: |
@@ -31,6 +31,8 @@ jobs:
             cp certs/ca.pem laravel/certs/ca.pem
             chmod 644 certs/ca.pem laravel/certs/ca.pem
             echo "CA certificate created successfully"
+            ls -la certs/
+            ls -la laravel/certs/
           else
             echo "Error: DB_SSL_CA secret not found"
             exit 1
@@ -48,7 +50,7 @@ jobs:
           echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
-          echo "DB_SSL_CA=certs/ca.pem" >> laravel/.env
+          echo "DB_SSL_CA=/var/www/html/certs/ca.pem" >> laravel/.env
           
           # Vue .env
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
@@ -62,40 +64,63 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose up -d --build --wait
-          sleep 10
+          docker compose up -d --build
+          sleep 15
 
       - name: Show container status
         run: docker compose ps -a
 
-      # Copy certificates to running containers and fix permissions
+      # Copy certificates to running containers using docker exec with sudo
       - name: Setup certificates in containers
         run: |
-          # Create certs directory in container if it doesn't exist
-          docker exec smarthire_laravel mkdir -p /var/www/html/certs
+          # First, check if we can access the container
+          echo "Checking container access..."
+          docker exec smarthire_laravel whoami || true
           
-          # Copy certificate
-          docker cp certs/ca.pem smarthire_laravel:/var/www/html/certs/ca.pem
+          # Create directory with proper permissions using different method
+          echo "Creating certs directory in container..."
+          docker exec smarthire_laravel bash -c "mkdir -p /var/www/html/certs && chmod 777 /var/www/html/certs" || true
           
-          # Set proper permissions
-          docker exec smarthire_laravel chmod 644 /var/www/html/certs/ca.pem
-          docker exec smarthire_laravel chown www-data:www-data /var/www/html/certs/ca.pem
+          # Copy certificate file using docker cp (this should work)
+          echo "Copying certificate to container..."
+          docker cp certs/ca.pem smarthire_laravel:/tmp/ca.pem
           
-          # Fix storage permissions to prevent 500 error
-          docker exec smarthire_laravel chmod -R 777 /var/www/html/storage
-          docker exec smarthire_laravel chmod -R 777 /var/www/html/bootstrap/cache
-          docker exec smarthire_laravel chown -R www-data:www-data /var/www/html/storage
-          docker exec smarthire_laravel chown -R www-data:www-data /var/www/html/bootstrap/cache
+          # Move certificate to final location using docker exec
+          echo "Moving certificate to final location..."
+          docker exec smarthire_laravel bash -c "cp /tmp/ca.pem /var/www/html/certs/ca.pem && chmod 644 /var/www/html/certs/ca.pem && chown www-data:www-data /var/www/html/certs/ca.pem" || true
+          
+          # Verify certificate is in place
+          echo "Verifying certificate in container:"
+          docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
+          
+          # Fix storage permissions
+          echo "Fixing storage permissions..."
+          docker exec smarthire_laravel bash -c "chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache" || true
+          docker exec smarthire_laravel bash -c "chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache" || true
+
+      # Alternative method: Use docker compose exec with volume mount
+      - name: Alternative certificate setup using volume mount
+        run: |
+          echo "Stopping containers..."
+          docker compose down
+          
+          echo "Updating docker-compose.yml to mount certs volume..."
+          # This is a fallback - you might need to modify your docker-compose.yml
+          # to include: - ./certs:/var/www/html/certs:ro
+          
+          echo "Restarting containers with volume mount..."
+          docker compose up -d --build
+          sleep 15
 
       # Host IP detection
       - name: Set Vue .env and Behat base_url to host IP
         run: |
-          HOST_IP=$(docker exec smarthire_selenium ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]')
+          HOST_IP=$(docker exec smarthire_selenium ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]' || true)
           if [ -z "$HOST_IP" ]; then
-            HOST_IP=$(docker exec smarthire_laravel ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]')
+            HOST_IP=$(docker exec smarthire_laravel ip route show default 2>/dev/null | awk '/default/ {print $3}' | tr -d '[:space:]' || true)
           fi
           if [ -z "$HOST_IP" ]; then
-            HOST_IP=$(docker network inspect $(docker inspect smarthire_selenium -f '{{range $k,$v := .NetworkSettings.Networks}}{{$v.NetworkID}}{{end}}' 2>/dev/null) --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null | tr -d '[:space:]')
+            HOST_IP=$(docker network inspect $(docker inspect smarthire_selenium -f '{{range $k,$v := .NetworkSettings.Networks}}{{$v.NetworkID}}{{end}}' 2>/dev/null) --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null | tr -d '[:space:]' || true)
           fi
           if [ -z "$HOST_IP" ]; then
             HOST_IP="172.17.0.1"
@@ -164,7 +189,8 @@ jobs:
         run: |
           echo "Testing Aiven MySQL connection..."
           echo "Certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
+          docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
+          docker exec smarthire_laravel cat /var/www/html/certs/ca.pem | head -20 || true
           echo ""
           echo "Calling your debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed || true
