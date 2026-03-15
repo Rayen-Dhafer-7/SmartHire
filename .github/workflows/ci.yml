@@ -141,6 +141,14 @@ jobs:
           echo "🚀 Testing updated debug-speed endpoint"
           echo "========================================="
           
+          # Debug: what does Laravel actually see?
+          echo "--- DB config Laravel is using ---"
+          docker exec smarthire_laravel php artisan config:show database.connections.mysql.host
+          docker exec smarthire_laravel php artisan config:show database.default
+          
+          echo "--- .env inside container ---"
+          docker exec smarthire_laravel grep -E "DB_CONNECTION|DB_HOST" /var/www/html/.env
+          
           echo "Calling http://localhost:8000/debug-speed"
           curl -s http://localhost:8000/debug-speed | jq . || curl -v http://localhost:8000/debug-speed
           
