@@ -91,7 +91,8 @@ Route::get('/debug-speed', function() {
             "mysql:host=" . env('DB_HOST') . ";port=" . env('DB_PORT') . ";dbname=" . env('DB_DATABASE'),
             env('DB_USERNAME'),
             env('DB_PASSWORD'),
-            [PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA')]
+            [PDO::MYSQL_ATTR_SSL_CA => base_path(env('DB_SSL_CA', 'certs/ca.pem'))]  // ← fixed
+
         );
         
         $connectTime = microtime(true) - $start;
