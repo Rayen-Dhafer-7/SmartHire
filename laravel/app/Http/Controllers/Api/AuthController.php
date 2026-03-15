@@ -10,6 +10,7 @@ use PDOException;
 use Firebase\JWT\JWT;  // Add this import
 use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB; 
 
 class AuthController extends Controller
 {

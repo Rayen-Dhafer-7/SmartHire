@@ -36,11 +36,8 @@ jobs:
         run: |
           cp laravel/.env.example laravel/.env
           
-          # Generate APP_KEY on runner before container starts
           APP_KEY="base64:$(openssl rand -base64 32)"
           sed -i "s|APP_KEY=|APP_KEY=${APP_KEY}|" laravel/.env
-          
-          # Replace DB_CONNECTION instead of appending (sqlite is in .env.example)
           sed -i "s|DB_CONNECTION=.*|DB_CONNECTION=mysql|" laravel/.env
           
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
@@ -49,6 +46,7 @@ jobs:
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
           echo "MYSQL_ATTR_SSL_CA=certs/ca.pem" >> laravel/.env
+          echo "JWT_SECRET=$(openssl rand -base64 32)" >> laravel/.env  # ← add here
           
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
