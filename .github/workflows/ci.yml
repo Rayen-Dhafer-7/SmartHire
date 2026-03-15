@@ -46,7 +46,7 @@ jobs:
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
           echo "MYSQL_ATTR_SSL_CA=certs/ca.pem" >> laravel/.env
-          echo "JWT_SECRET=$(openssl rand -base64 32)" >> laravel/.env  # ← add here
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> laravel/.env
           
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
