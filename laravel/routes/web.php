@@ -81,8 +81,6 @@ Route::prefix('worker')->group(function () {
 
 
 
-
-
 Route::get('/debug-speed', function() {
     $start = microtime(true);
     
@@ -91,12 +89,10 @@ Route::get('/debug-speed', function() {
             "mysql:host=" . env('DB_HOST') . ";port=" . env('DB_PORT') . ";dbname=" . env('DB_DATABASE'),
             env('DB_USERNAME'),
             env('DB_PASSWORD'),
-            [PDO::MYSQL_ATTR_SSL_CA => base_path(env('MYSQL_ATTR_SSL_CA', 'certs/ca.pem'))]
+            [] // ← no SSL, just test TCP connection
         );
         
         $connectTime = microtime(true) - $start;
-        
-        // Test query speed
         $queryStart = microtime(true);
         $stmt = $pdo->query("SELECT 1");
         $queryTime = microtime(true) - $queryStart;
@@ -112,6 +108,5 @@ Route::get('/debug-speed', function() {
         return response()->json(['error' => $e->getMessage()]);
     }
 });
-
 
  
