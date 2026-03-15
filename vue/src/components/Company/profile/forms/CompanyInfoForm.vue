@@ -14,9 +14,10 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Email</label>
-        <textarea class="form-control" id="industry_description" name="industry_description" rows="6" v-model="profile.description"></textarea>
-
+        <input type="text" class="form-control" id="email" name="email" v-model="profile.email" />
       </div>
+
+      
     </div>
 
     <!-- Second Row: Image and Description -->
