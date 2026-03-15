@@ -56,9 +56,21 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => base_path(env('DB_SSL_CA', 'certs/ca.pem')),
+                PDO::MYSQL_ATTR_SSL_CA => env('DB_SSL_CA') ? $this->writeCertToTempFile(env('DB_SSL_CA')) : null,
             ]) : [],
         ],
+
+        // Add this method to your database.php config file
+        protected function writeCertToTempFile($certContent) {
+            $tempFile = tempnam(sys_get_temp_dir(), 'mysql_ssl_ca_');
+            file_put_contents($tempFile, $certContent);
+            register_shutdown_function(function() use ($tempFile) {
+                if (file_exists($tempFile)) {
+                    unlink($tempFile);
+                }
+            });
+            return $tempFile;
+        }
 
         'mariadb' => [
             'driver' => 'mariadb',

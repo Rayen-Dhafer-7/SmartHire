@@ -17,45 +17,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # --- Prepare env files with secret directly ---
+      # --- Prepare env files for CI ---
       - name: Prepare env files for CI
         run: |
           # Laravel .env
           cp laravel/.env.example laravel/.env
           
-          # Update Laravel .env with database SSL settings
+          # Update Laravel .env with database settings
           echo "DB_CONNECTION=mysql" >> laravel/.env
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> laravel/.env
           echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
-          echo "DB_SSL_CA=/var/www/html/certs/ca.pem" >> laravel/.env
+          
+          # Write the CA certificate content directly to .env (as a single line)
+          echo "DB_SSL_CA=\"${{ secrets.DB_SSL_CA }}\"" >> laravel/.env
           
           # Vue .env
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
-
-      - name: Create CA certificate file from secret
-        run: |
-          # Create certs directory
-          mkdir -p certs
           
-          # Write the secret directly to the certificate file
-          echo "${{ secrets.DB_SSL_CA }}" > certs/ca.pem
-          
-          # Set proper permissions
-          chmod 644 certs/ca.pem
-          
-          # Verify file was created and has content
-          echo "Certificate file created at certs/ca.pem"
-          ls -la certs/
-          
-          # Show first few lines (for debugging)
-          head -5 certs/ca.pem
-          
-          # Check file size
-          echo "Certificate file size: $(wc -c < certs/ca.pem) bytes"
+          # Show that DB_SSL_CA is set (without showing the full cert)
+          echo "DB_SSL_CA is set in .env"
 
       - name: Install Vue node_modules for CI
         run: |
@@ -65,36 +49,11 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose up -d --build
-          sleep 15
+          docker compose up -d --build --wait
+          sleep 10
 
       - name: Show container status
         run: docker compose ps -a
-
-      # Copy certificate to container and configure SSL properly
-      - name: Configure SSL certificate in container
-        run: |
-          # Create certs directory in container
-          docker exec smarthire_laravel mkdir -p /var/www/html/certs
-          
-          # Copy certificate to container
-          docker cp certs/ca.pem smarthire_laravel:/var/www/html/certs/ca.pem
-          
-          # Set proper permissions
-          docker exec smarthire_laravel chmod 644 /var/www/html/certs/ca.pem
-          docker exec smarthire_laravel chown www-data:www-data /var/www/html/certs/ca.pem
-          
-          # Verify certificate is in place
-          echo "Verifying certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
-          
-          # Test SSL connection manually
-          echo "Testing SSL connection to MySQL..."
-          docker exec smarthire_laravel bash -c "mysql --ssl-ca=/var/www/html/certs/ca.pem -h ${{ secrets.DB_HOST }} -P ${{ secrets.DB_PORT }} -u ${{ secrets.DB_USERNAME }} -p${{ secrets.DB_PASSWORD }} -e 'SELECT 1;'" || true
-          
-          # Fix storage permissions
-          docker exec smarthire_laravel chmod -R 777 storage bootstrap/cache
-          docker exec smarthire_laravel chown -R www-data:www-data storage bootstrap/cache
 
       # Host IP detection
       - name: Set Vue .env and Behat base_url to host IP
@@ -119,25 +78,12 @@ jobs:
       - name: Restart Vue to pick up .env
         run: docker compose restart vue
 
-      # Skip migrations for now, just test connection
-      - name: Test database connection without migrations
+      - name: Prepare Laravel
         run: |
-          echo "Testing database connection with SSL..."
-          docker exec smarthire_laravel php artisan tinker --execute="
-            try {
-              DB::connection()->getPdo();
-              echo \"✅ Connection successful!\n\";
-              
-              // Check SSL info
-              \$pdo = DB::connection()->getPdo();
-              \$ssl_cipher = \$pdo->getAttribute(PDO::MYSQL_ATTR_SSL_CIPHER);
-              echo \"SSL Cipher: \" . (\$ssl_cipher ?: 'Not using SSL') . \"\n\";
-              
-            } catch (\Exception \$e) {
-              echo \"❌ Connection failed: \" . \$e->getMessage() . \"\n\";
-              exit(1);
-            }
-          "
+          docker exec smarthire_laravel php artisan key:generate --force
+          docker exec smarthire_laravel php artisan config:clear
+          docker exec smarthire_laravel php artisan config:cache
+          docker exec smarthire_laravel php artisan migrate --force
 
       - name: Wait for Laravel to respond
         run: |
@@ -179,9 +125,6 @@ jobs:
       - name: Test Aiven MySQL connection speed
         run: |
           echo "Testing Aiven MySQL connection..."
-          echo "Certificate in container:"
-          docker exec smarthire_laravel ls -la /var/www/html/certs/
-          echo ""
           echo "Calling your debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed || true
           
@@ -191,12 +134,6 @@ jobs:
             echo "Laravel logs:"
             docker compose logs laravel --tail=50
           fi
-
-      # Only run migrations if connection works
-      - name: Run migrations (if connection successful)
-        run: |
-          echo "Attempting to run migrations..."
-          docker exec smarthire_laravel php artisan migrate --force || echo "Migrations failed but continuing..."
 
       # Warm SPA
       - name: Warm Vue app
