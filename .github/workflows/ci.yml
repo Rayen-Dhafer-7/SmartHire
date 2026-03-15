@@ -99,12 +99,11 @@ jobs:
       - name: Restart Vue to pick up .env
         run: docker compose restart vue
 
-      - name: Prepare Laravel
+      - name: Prepare Laravel (No migrations)
         run: |
           docker exec smarthire_laravel php artisan key:generate --force
           docker exec smarthire_laravel php artisan config:clear
           docker exec smarthire_laravel php artisan config:cache
-          docker exec smarthire_laravel php artisan migrate --force
 
       - name: Wait for Laravel to respond
         run: |
@@ -142,7 +141,7 @@ jobs:
             exit 1
           fi
 
-      # Test Aiven MySQL connection + latency
+      # Test Aiven MySQL connection + latency - YOUR EXACT API
       - name: Test Aiven MySQL connection speed
         run: |
           echo "Testing Aiven MySQL connection..."
@@ -151,13 +150,6 @@ jobs:
           echo ""
           echo "Calling your debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed || true
-          
-          # If curl fails, show logs
-          if [ $? -ne 0 ]; then
-            echo ""
-            echo "Laravel logs:"
-            docker compose logs laravel --tail=50
-          fi
 
       # Warm SPA
       - name: Warm Vue app
