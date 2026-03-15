@@ -27,11 +27,9 @@ jobs:
           mkdir -p certs
 
       # 3️⃣ Copy your local certs from repo to container
-      - name: Copy SSL certs to Laravel container
-        run: |
-          LARAVEL_CONTAINER=$(docker compose ps -q laravel)
-          echo "Laravel container: $LARAVEL_CONTAINER"
-          docker cp certs/ca.pem $LARAVEL_CONTAINER:/var/www/html/certs/ca.pem
+      - name: Copy SSL cert to Laravel container
+        run: docker compose exec -T laravel sh -c "mkdir -p /var/www/html/certs && cat > /var/www/html/certs/ca.pem" < certs/ca.pem
+
 
       # 4️⃣ Install Vue dependencies
       - name: Install Vue node_modules
