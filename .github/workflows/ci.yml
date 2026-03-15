@@ -21,9 +21,38 @@ jobs:
       - name: Prepare env and dirs for CI
         run: |
           cp laravel/.env.example laravel/.env
+          echo "JWT_SECRET=ci-secret-key-for-behat-tests-only" >> laravel/.env
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
           mkdir -p certs
+          mkdir -p laravel/certs
+
+      - name: Configure Aiven MySQL and SSL cert for CI
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
+        run: |
+          if [ -n "$DB_HOST" ] && [ -n "$DB_DATABASE" ]; then
+            echo "Configuring Laravel for Aiven MySQL..."
+            echo "" >> laravel/.env
+            echo "DB_CONNECTION=mysql" >> laravel/.env
+            echo "DB_HOST=$DB_HOST" >> laravel/.env
+            echo "DB_PORT=${DB_PORT:-3306}" >> laravel/.env
+            echo "DB_DATABASE=$DB_DATABASE" >> laravel/.env
+            echo "DB_USERNAME=$DB_USERNAME" >> laravel/.env
+            echo "DB_PASSWORD=$DB_PASSWORD" >> laravel/.env
+            echo "MYSQL_ATTR_SSL_CA=/var/www/html/certs/ca.pem" >> laravel/.env
+            if [ -n "$DB_SSL_CA" ]; then
+              echo "$DB_SSL_CA" > laravel/certs/ca.pem
+              echo "Aiven SSL cert written to laravel/certs/ca.pem"
+            fi
+          else
+            echo "Aiven secrets not set (DB_HOST/DB_DATABASE); Laravel will use .env.example (SQLite)."
+          fi
 
       - name: Install Vue node_modules for CI
         run: |
@@ -67,6 +96,22 @@ jobs:
         run: |
           docker exec smarthire_laravel php artisan key:generate --force
           docker exec smarthire_laravel php artisan migrate --force
+
+      - name: Seed Behat test users (so login API finds dd@dd.dd and rayendhafer@gmail.com)
+        run: |
+          docker exec smarthire_laravel php artisan tinker --execute="
+            \$pwd = Illuminate\Support\Facades\Hash::make('123456');
+            \$cid = (string) Illuminate\Support\Str::uuid();
+            \$wid = (string) Illuminate\Support\Str::uuid();
+            try {
+              Illuminate\Support\Facades\DB::table('companies')->insert(['id'=>\$cid,'companyName'=>'Behat Company','email'=>'dd@dd.dd','password'=>\$pwd,'location'=>'CI','industry'=>'Test','created_at'=>now(),'updated_at'=>now()]);
+              echo 'Company dd@dd.dd seeded. ';
+            } catch (\Exception \$e) { echo 'Company seed: '.\$e->getMessage().' '; }
+            try {
+              Illuminate\Support\Facades\DB::table('workers')->insert(['id'=>\$wid,'fullName'=>'Behat Worker','email'=>'rayendhafer@gmail.com','password'=>\$pwd,'location'=>'CI','industry'=>'Test','created_at'=>now(),'updated_at'=>now()]);
+              echo 'Worker rayendhafer@gmail.com seeded.';
+            } catch (\Exception \$e) { echo 'Worker seed: '.\$e->getMessage(); }
+          "
 
       - name: Wait for Laravel to respond
         run: |
