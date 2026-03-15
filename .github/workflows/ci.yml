@@ -40,7 +40,9 @@ jobs:
           APP_KEY="base64:$(openssl rand -base64 32)"
           sed -i "s|APP_KEY=|APP_KEY=${APP_KEY}|" laravel/.env
           
-          echo "DB_CONNECTION=mysql" >> laravel/.env
+          # Replace DB_CONNECTION instead of appending (sqlite is in .env.example)
+          sed -i "s|DB_CONNECTION=.*|DB_CONNECTION=mysql|" laravel/.env
+          
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> laravel/.env
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> laravel/.env
           echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
