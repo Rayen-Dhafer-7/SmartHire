@@ -81,6 +81,8 @@ Route::prefix('worker')->group(function () {
 
 
 
+
+
 Route::get('/debug-speed', function() {
     $start = microtime(true);
     try {
@@ -101,5 +103,4 @@ Route::get('/debug-speed', function() {
         return response()->json(['error' => $e->getMessage()]);
     }
 });
-
  
