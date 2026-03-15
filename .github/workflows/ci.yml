@@ -25,6 +25,13 @@ jobs:
           echo "FRONTEND_URL=http://vue:5174" >> vue/.env
           mkdir -p certs
 
+      - name: Install Vue node_modules for CI
+        run: |
+          cd vue
+          npm install --include=dev
+          npm install vite@latest --save-dev
+          ls node_modules/.bin/vite
+
       - name: Start services with Docker Compose
         run: docker compose up -d --build --wait
 
@@ -57,8 +64,6 @@ jobs:
 
       - name: Wait for Vue dev server to respond
         run: |
-          echo "Vue runs npm install on start (volume mount). Waiting 3 min then polling..."
-          sleep 180
           echo "Polling for Vue on port 5174..."
           code="000"
           for i in $(seq 1 72); do
