@@ -82,9 +82,16 @@ jobs:
           echo "Checking certificate in container:"
           docker exec smarthire_laravel ls -la /var/www/html/certs/ || true
           
+          # Fix ownership of .env so www-data can read it
+          docker exec --user root smarthire_laravel chown www-data:www-data /var/www/html/.env
+          docker exec --user root smarthire_laravel chmod 644 /var/www/html/.env
+          
           # Fix storage permissions
           docker exec --user root smarthire_laravel chmod -R 777 storage bootstrap/cache
-
+      - name: Restart Laravel to pick up .env
+        run: |
+          docker compose restart laravel
+          sleep 5
 
       # Host IP detection
       - name: Set Vue .env and Behat base_url to host IP
