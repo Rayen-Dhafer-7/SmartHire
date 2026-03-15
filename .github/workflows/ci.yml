@@ -21,8 +21,8 @@ jobs:
       - name: Prepare env and dirs for CI
         run: |
           cp laravel/.env.example laravel/.env
-          echo "VITE_API_URL=http://laravel" > vue/.env
-          echo "FRONTEND_URL=http://vue:5174" >> vue/.env
+          echo "VITE_API_URL=http://placeholder:8000" > vue/.env
+          echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
           mkdir -p certs
 
       - name: Install Vue node_modules for CI
@@ -37,6 +37,19 @@ jobs:
 
       - name: Show container status
         run: docker compose ps -a
+
+      # Host IP = gateway from containers (like 172.18.0.1). Browser in Selenium must use this to reach Vue & Laravel (same as your PC 172.21.0.1).
+      - name: Set Vue .env and Behat base_url to host gateway IP
+        run: |
+          HOST_IP=$(docker exec smarthire_selenium ip route show default | awk '/default/ {print $3}')
+          echo "Host gateway IP (for browser in Selenium): $HOST_IP"
+          echo "VITE_API_URL=http://${HOST_IP}:8000" > vue/.env
+          echo "FRONTEND_URL=http://${HOST_IP}:5174" >> vue/.env
+          sed -i "s|base_url:.*|base_url: http://${HOST_IP}:5174|" laravel/behat.yml
+          echo "Vue .env and behat base_url set to http://${HOST_IP}:5174 and :8000"
+
+      - name: Restart Vue to pick up .env
+        run: docker compose restart vue
 
       - name: Prepare Laravel (key, migrate)
         run: |
@@ -80,11 +93,6 @@ jobs:
             docker compose logs vue --tail=200
             exit 1
           fi
-
-      # Use Docker service name in CI so Selenium container can reach Vue (host IP differs in GHA)
-      - name: Set Behat base_url for CI (vue:5174)
-        run: |
-          sed -i 's|base_url:.*|base_url: http://vue:5174|' laravel/behat.yml
 
       # Warm Vue app and wait for SPA to be ready (CI is slower; form must be in DOM before Behat fills it)
       - name: Warm Vue app and wait for login page ready
