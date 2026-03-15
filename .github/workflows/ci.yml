@@ -41,12 +41,14 @@ jobs:
       # Host IP = gateway from containers (like 172.18.0.1). Browser in Selenium must use this to reach Vue & Laravel (same as your PC 172.21.0.1).
       - name: Set Vue .env and Behat base_url to host gateway IP
         run: |
-          HOST_IP=$(docker exec smarthire_selenium ip route show default | awk '/default/ {print $3}')
-          echo "Host gateway IP (for browser in Selenium): $HOST_IP"
+          HOST_IP=$(docker exec smarthire_selenium ip route show default | awk '/default/ {print $3}' | tr -d '[:space:]')
+          if [ -z "$HOST_IP" ]; then echo "ERROR: Could not get host gateway IP"; exit 1; fi
+          echo "Host gateway IP (for browser in Selenium): [$HOST_IP]"
           echo "VITE_API_URL=http://${HOST_IP}:8000" > vue/.env
           echo "FRONTEND_URL=http://${HOST_IP}:5174" >> vue/.env
           sed -i "s|base_url:.*|base_url: http://${HOST_IP}:5174|" laravel/behat.yml
-          echo "Vue .env and behat base_url set to http://${HOST_IP}:5174 and :8000"
+          echo "Behat base_url set to: http://${HOST_IP}:5174"
+          grep base_url laravel/behat.yml
 
       - name: Restart Vue to pick up .env
         run: docker compose restart vue
