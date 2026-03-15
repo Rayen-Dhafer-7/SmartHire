@@ -37,7 +37,6 @@ jobs:
         run: |
           cp laravel/.env.example laravel/.env
           
-          # Generate and inject APP_KEY before container starts
           APP_KEY="base64:$(openssl rand -base64 32)"
           sed -i "s|APP_KEY=|APP_KEY=${APP_KEY}|" laravel/.env
           
@@ -47,9 +46,8 @@ jobs:
           echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> laravel/.env
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> laravel/.env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> laravel/.env
-          echo "MYSQL_ATTR_SSL_CA=certs/ca.pem" >> laravel/.env
+          echo "DB_SSL_CA=certs/ca.pem" >> laravel/.env          # ← was MYSQL_ATTR_SSL_CA
           
-          echo "Vue .env"
           echo "VITE_API_URL=http://placeholder:8000" > vue/.env
           echo "FRONTEND_URL=http://placeholder:5174" >> vue/.env
 
@@ -152,14 +150,14 @@ jobs:
           docker exec smarthire_laravel ls -la /var/www/html/certs/
           
           echo -e "\n2️⃣ Checking .env file in container:"
-          docker exec smarthire_laravel cat /var/www/html/.env | grep MYSQL_ATTR_SSL_CA || echo "MYSQL_ATTR_SSL_CA not found in .env"
+          docker exec smarthire_laravel cat /var/www/html/.env | grep DB_SSL_CA || echo "DB_SSL_CA not found in .env"  # ← was MYSQL_ATTR_SSL_CA
           
           echo -e "\n3️⃣ Reloading Laravel configuration:"
           docker exec smarthire_laravel php artisan config:clear
           docker exec smarthire_laravel php artisan config:cache
           
           echo -e "\n4️⃣ Checking environment variable after config cache:"
-          docker exec smarthire_laravel php artisan tinker --execute="echo env('MYSQL_ATTR_SSL_CA') ?: 'Not set';"
+          docker exec -e HOME=/tmp smarthire_laravel php artisan tinker --execute="echo env('DB_SSL_CA') ?: 'Not set';"  # ← fixed HOME + var name
           
           echo -e "\n5️⃣ Calling debug-speed endpoint:"
           curl -v http://localhost:8000/debug-speed
