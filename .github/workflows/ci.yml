@@ -160,9 +160,6 @@ jobs:
       - name: Run Behat tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty || true
 
-  # ============================================
-  # CD — only runs on push to main after CI pass
-  # ============================================
   deploy-to-aws:
     runs-on: ubuntu-latest
     needs: laravel-tests
@@ -183,6 +180,18 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Build and push Laravel image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/smarthire-laravel:$IMAGE_TAG \
+            -t $ECR_REGISTRY/smarthire-laravel:latest \
+            ./laravel
+          docker push $ECR_REGISTRY/smarthire-laravel:$IMAGE_TAG
+          docker push $ECR_REGISTRY/smarthire-laravel:latest
+
       - name: Build and push Vue image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -197,20 +206,6 @@ jobs:
           docker push $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG
           docker push $ECR_REGISTRY/smarthire-vue:latest
 
-      - name: Build and push Vue image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build \
-            --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
-            -t $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG \
-            -t $ECR_REGISTRY/smarthire-vue:latest \
-            ./vue
-          docker push $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG
-          docker push $ECR_REGISTRY/smarthire-vue:latest
-
-      # Uncomment these after images are confirmed in ECR
       # - name: Deploy Laravel to App Runner
       #   run: |
       #     aws apprunner start-deployment \
