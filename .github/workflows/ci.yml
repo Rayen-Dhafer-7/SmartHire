@@ -160,4 +160,63 @@ jobs:
       - name: Run Behat tests
         run: docker exec smarthire_laravel vendor/bin/behat --format=pretty || true
 
- 
+  # ============================================
+  # CD — only runs on push to main after CI pass
+  # ============================================
+  deploy-to-aws:
+    runs-on: ubuntu-latest
+    needs: laravel-tests
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Vue image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --file ./vue/Dockerfile.prod \
+            --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
+            -t $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG \
+            -t $ECR_REGISTRY/smarthire-vue:latest \
+            ./vue
+          docker push $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG
+          docker push $ECR_REGISTRY/smarthire-vue:latest
+
+      - name: Build and push Vue image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
+            -t $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG \
+            -t $ECR_REGISTRY/smarthire-vue:latest \
+            ./vue
+          docker push $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG
+          docker push $ECR_REGISTRY/smarthire-vue:latest
+
+      # Uncomment these after images are confirmed in ECR
+      # - name: Deploy Laravel to App Runner
+      #   run: |
+      #     aws apprunner start-deployment \
+      #       --service-arn ${{ secrets.APP_RUNNER_ARN_LARAVEL }}
+
+      # - name: Deploy Vue to App Runner
+      #   run: |
+      #     aws apprunner start-deployment \
+      #       --service-arn ${{ secrets.APP_RUNNER_ARN_VUE }}
