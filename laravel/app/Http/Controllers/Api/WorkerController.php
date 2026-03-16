@@ -35,16 +35,13 @@ public function register(Request $request)
     ]);
 
     if ($validator->fails()) {
-        return response()->json([
-            'status' => 'error',
-            'errors' => $validator->errors()
-        ], 422);
+        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
     }
 
     try {
         $pdo = $this->pdo();
 
-        // Check if email already exists
+        // Check email
         $check = $pdo->prepare("SELECT id FROM workers WHERE email = ?");
         $check->execute([$request->email]);
         if ($check->fetch()) {
@@ -54,46 +51,65 @@ public function register(Request $request)
             ], 422);
         }
 
-        // Handle profile photo upload to S3
+        // ========== FIXED: Handle photo upload ==========
         $photoUrl = null;
         if ($request->hasFile('profile')) {
             $file = $request->file('profile');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            
+            // ✅ FIXED: Store correctly (without extra 'public' in path)
+            $path = $file->storeAs('workers/photos', $filename, 'public');
+            
+            // ✅ FIXED: Generate clean URL without /storage/public/
+            $photoUrl = config('app.url') . '/storage/workers/photos/' . $filename;
 
-            // Upload to S3
-            $file->storeAs('workers/photos', $filename, 's3');
 
-            // Get public HTTPS URL
-            $photoUrl = Storage::disk('s3')->url('workers/photos/' . $filename);
-
-            \Log::info('Profile photo uploaded to S3:', [
+            // ✅ ALSO ENSURE FILE IS ACCESSIBLE IN PUBLIC STORAGE
+            $sourcePath = storage_path('app/public/workers/photos/' . $filename);
+            $targetPath = public_path('storage/workers/photos/' . $filename);
+            
+            // Create directory if it doesn't exist
+            if (!file_exists(dirname($targetPath))) {
+                mkdir(dirname($targetPath), 0755, true);
+            }
+            
+            // Create symbolic link or copy file
+            if (!file_exists($targetPath)) {
+                // Try symlink first
+                if (!@symlink($sourcePath, $targetPath)) {
+                    // If symlink fails, copy the file
+                    copy($sourcePath, $targetPath);
+                }
+            }
+            
+            \Log::info('Profile photo uploaded:', [
                 'filename' => $filename,
+                'path' => $path,
                 'url' => $photoUrl
             ]);
         }
 
-        // Insert worker
-        $workerId = 'WRK_' . uniqid();
+        $workerId = 'WRK_' . uniqid(); 
+
         $stmt = $pdo->prepare(
             "INSERT INTO workers (id, fullname, email, password, photoUrl) VALUES (?, ?, ?, ?, ?)"
         );
+
         $stmt->execute([
-            $workerId,
+            $workerId,     
             $request->fullName,
             $request->email,
             Hash::make($request->password),
             $photoUrl
         ]);
 
-        // Insert into UrlsCompte
-        $urlsCompteId = 'URL_' . uniqid();
+        $urlsCompteId = 'URL_' . uniqid(); 
         $urlsStmt = $pdo->prepare(
             "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'worker')"
         );
         $urlsStmt->execute([$urlsCompteId, $workerId]);
 
-        // Insert empty WorkerCV record
-        $workerCvId = 'CV_' . uniqid();
+        $workerCvId = 'CV_' . uniqid(); 
         $cvStmt = $pdo->prepare(
             "INSERT INTO WorkerCV (id, worker_id) VALUES (?, ?)"
         );
@@ -110,12 +126,10 @@ public function register(Request $request)
 
     } catch (PDOException $e) {
         \Log::error('Database error:', ['error' => $e->getMessage()]);
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Database connection failed'
-        ], 500);
+        return response()->json(['status' => 'error', 'message' => 'Database connection failed'], 500);
     }
 }
+    
 
     public function getinfo(Request $request)
 {
@@ -234,7 +248,8 @@ public function updateinfo(Request $request)
             $path = $file->storeAs('workers/photos', $filename, 'public');
             
             // ✅ GENERATE CLEAN URL
-            $newPhotoUrl = asset('storage/workers/photos/' . $filename);
+            $newPhotoUrl = config('app.url') . '/storage/workers/photos/' . $filename;
+
 
             // ✅ AUTO-COPY TO PUBLIC STORAGE (THIS IS CRITICAL!)
             $sourcePath = storage_path('app/public/workers/photos/' . $filename);
@@ -364,7 +379,8 @@ public function uploadCV(Request $request)
 
         // Store CV file
         $cvPath = $cvFile->storeAs('public/workers/cv', $cvFilename);
-        $cvStoragePath = Storage::url($cvPath);
+        $cvStoragePath = config('app.url') . '/storage/workers/cv/' . $cvFilename;
+
 
         \Log::info('CV stored at:', ['storage_path' => $cvStoragePath]);
 
@@ -496,8 +512,6 @@ public function updatepass(Request $request)
 
 public function deleteCv(Request $request, $cvId)
 {
-   
-
     try {
         $pdo = $this->pdo();
         $workerId = $this->getWorkerIdFromToken($request->bearerToken());
@@ -518,10 +532,28 @@ public function deleteCv(Request $request, $cvId)
             ], 404);
         }
 
-        // Delete file from storage
+        // Delete file from storage - FIXED PATH EXTRACTION
         if (!empty($cv['file_path'])) {
-            $storagePath = str_replace('/storage/', 'public/', $cv['file_path']);
+            // Extract filename from URL
+            $urlParts = explode('/', $cv['file_path']);
+            $filename = end($urlParts);
+            
+            // Build storage path
+            $storagePath = 'public/workers/cv/' . $filename;
+            
+            \Log::info('Deleting CV file:', [
+                'url' => $cv['file_path'],
+                'filename' => $filename,
+                'storage_path' => $storagePath
+            ]);
+            
             Storage::delete($storagePath);
+            
+            // Also delete from public directory if it exists
+            $publicPath = public_path('storage/workers/cv/' . $filename);
+            if (file_exists($publicPath)) {
+                unlink($publicPath);
+            }
         }
 
         // Delete record
@@ -537,9 +569,14 @@ public function deleteCv(Request $request, $cvId)
         ]);
 
     } catch (\Exception $e) {
+        \Log::error('CV Delete Error:', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
         return response()->json([
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => 'Failed to delete CV: ' . $e->getMessage()
         ], 500);
     }
 }
