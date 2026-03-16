@@ -17,10 +17,6 @@ export const getProfile = () => {
     return profile;
 };
 
-export const clearProfile = () => {
-    profile = null; // optional: clear the data
-};
-
 
 
 /**
