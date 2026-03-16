@@ -206,12 +206,12 @@ jobs:
           docker push $ECR_REGISTRY/smarthire-vue:$IMAGE_TAG
           docker push $ECR_REGISTRY/smarthire-vue:latest
 
-      # - name: Deploy Laravel to App Runner
-      #   run: |
-      #     aws apprunner start-deployment \
-      #       --service-arn ${{ secrets.APP_RUNNER_ARN_LARAVEL }}
+      - name: Deploy Laravel to App Runner
+        run: |
+          aws apprunner start-deployment \
+            --service-arn ${{ secrets.APP_RUNNER_ARN_LARAVEL }}
 
-      # - name: Deploy Vue to App Runner
-      #   run: |
-      #     aws apprunner start-deployment \
-      #       --service-arn ${{ secrets.APP_RUNNER_ARN_VUE }}
+      - name: Deploy Vue to App Runner
+        run: |
+          aws apprunner start-deployment \
+            --service-arn ${{ secrets.APP_RUNNER_ARN_VUE }}
