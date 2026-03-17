@@ -166,133 +166,123 @@ class AuthController extends Controller
     
 
     
-    public function sendMail(Request $request)
-    {
- 
+public function sendMail(Request $request)
+{
+    \Log::info('=== sendMail START ===');
+    \Log::info('Request received for email: ' . ($request->email ?? 'NULL'));
+
+    try {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
         
-        \Log::info('=== sendMail START ===');
-        \Log::info('Request received for email: ' . ($request->email ?? 'NULL'));
-    
-        try {
-            $request->validate([
-                'email' => 'required|email'
-            ]);
-            
-            \Log::info('✅ Email validation passed');
-    
-            $pdo = $this->pdo();
-            \Log::info('✅ Database connection established');
-    
-            // 🔍 Check workers table
-            $stmt = $pdo->prepare("SELECT id FROM workers WHERE email = ? LIMIT 1");
+        \Log::info('✅ Email validation passed');
+
+        $pdo = $this->pdo();
+        \Log::info('✅ Database connection established');
+
+        // Check workers table
+        $stmt = $pdo->prepare("SELECT id FROM workers WHERE email = ? LIMIT 1");
+        $stmt->execute([$request->email]);
+        $user = $stmt->fetch();
+        $role = 'worker';
+        
+        \Log::info('Found in workers: ' . ($user ? 'YES' : 'NO'));
+
+        // Check companies if not found
+        if (!$user) {
+            $stmt = $pdo->prepare("SELECT id FROM companies WHERE email = ? LIMIT 1");
             $stmt->execute([$request->email]);
             $user = $stmt->fetch();
-            $role = 'worker';
-            
-            \Log::info('🔍 Workers table query executed');
-            \Log::info('Found in workers: ' . ($user ? 'YES' : 'NO'));
-    
-            // 🔍 Check companies if not found
-            if (!$user) {
-                \Log::info('⏭ Checking companies table...');
-                $stmt = $pdo->prepare("SELECT id FROM companies WHERE email = ? LIMIT 1");
-                $stmt->execute([$request->email]);
-                $user = $stmt->fetch();
-                $role = 'company';
-                \Log::info('🔍 Companies table query executed');
-                \Log::info('Found in companies: ' . ($user ? 'YES' : 'NO'));
-            }
-    
-            if (!$user) {
-                \Log::warning('❌ Email not found in any table: ' . $request->email);
-                return response()->json(['error' => 'Email not found'], 404);
-            }
-    
-            \Log::info('✅ User found! ID: ' . $user['id'] . ', Role: ' . $role);
-    
-            $jwtSecret = env('JWT_SECRET');
-            \Log::info('JWT_SECRET loaded: ' . ($jwtSecret ? 'YES' : 'NO'));
-    
-            // ⏱ Token expires in 5 minutes
-            $token = JWT::encode([
-                'sub' => $user['id'],
-                'role' => $role,
-                'exp' => time() + 300
-            ], $jwtSecret, 'HS256');
-            
-            \Log::info('✅ JWT token generated');
-    
-            $resetLink = "http://localhost:5174/{$role}/reset-password?token={$token}&role={$role}";
-            \Log::info('Reset link created: ' . $resetLink);
-    
-            // 🔥 HTML email
-            $mailHtml = <<<HTML
-                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 40px auto; background: #ffffff; border: 1px solid #e1e4e8; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 40px; color: #24292e;">
-                    <div style="text-align: center; margin-bottom: 24px;">
-                        <h1 style="font-size: 28px; font-weight: 700; margin: 0; color: #4f46e5; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                            SmartHire
-                        </h1>
-                    </div>
-                    <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #1f2937;">
-                        Réinitialisation de votre mot de passe
-                    </h2>
-                    <p style="font-size: 16px; line-height: 1.5; color: #4b5563;">
-                        Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien expirera dans 5 minutes.
-                    </p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{$resetLink}"
-                        style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #fff; background: linear-gradient(to right, #4f46e5, #0ea5e9); border-radius: 6px; text-decoration: none; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4); transition: all 0.3s ease;">
-                        Réinitialiser le mot de passe
-                        </a>
-                    </div>
-                    <p style="font-size: 14px; color: #6b7280;">
-                        Si vous n'avez pas demandé de réinitialisation de mot de passe, vous pouvez ignorer cet email en toute sécurité. Votre compte est sécurisé.
-                    </p>
-                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-                    <div style="text-align: center;">
-                        <p style="font-size: 12px; color: #9ca3af;">
-                            © 2026 SmartHire. Tous droits réservés.<br>
-                            Bembla, Monastir
-                        </p>
-                    </div>
-                </div>
-                HTML;
-    
-            \Log::info('📧 Email HTML prepared, attempting to send...');
-    
-            // ✉ Send email - FIXED!
-            Mail::html($mailHtml, function ($message) use ($request) {
-                $message->to($request->email)
-                        ->subject('Réinitialisation de votre mot de passe');
-            });
-            
-            \Log::info('✅ Mail sent successfully via Mail facade');
-            
-            return response()->json([
-                'message' => 'Reset password email sent successfully',
-                'resetLink' => $resetLink // optional for testing
-            ]);
-    
-        } catch (\Illuminate\Validation\ValidationException $ve) {
-            \Log::error('❌ Validation error: ' . json_encode($ve->errors()));
-            return response()->json([
-                'error' => 'Validation failed',
-                'errors' => $ve->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            \Log::error('❌ Exception in sendMail: ' . $e->getMessage());
-            \Log::error('❌ File: ' . $e->getFile());
-            \Log::error('❌ Line: ' . $e->getLine());
-            \Log::error('❌ Trace: ' . $e->getTraceAsString());
-            
-            return response()->json([
-                'error' => 'Failed to send reset email',
-                'message' => $e->getMessage()
-            ], 500);
-        } finally {
-            \Log::info('=== sendMail END ===');
+            $role = 'company';
+            \Log::info('Found in companies: ' . ($user ? 'YES' : 'NO'));
         }
+
+        if (!$user) {
+            \Log::warning('❌ Email not found: ' . $request->email);
+            return response()->json(['error' => 'Email not found'], 404);
+        }
+
+        \Log::info('✅ User found! ID: ' . $user['id'] . ', Role: ' . $role);
+
+        $jwtSecret = env('JWT_SECRET');
+
+        // Token expires in 5 minutes
+        $token = JWT::encode([
+            'sub' => $user['id'],
+            'role' => $role,
+            'exp' => time() + 300
+        ], $jwtSecret, 'HS256');
+
+        \Log::info('✅ JWT token generated');
+
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5174');
+        $resetLink = "{$frontendUrl}/{$role}/reset-password?token={$token}&role={$role}";
+        \Log::info('Reset link created: ' . $resetLink);
+
+        $mailHtml = <<<HTML
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 40px auto; background: #ffffff; border: 1px solid #e1e4e8; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 40px; color: #24292e;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <h1 style="font-size: 28px; font-weight: 700; margin: 0; color: #4f46e5;">
+                        SmartHire
+                    </h1>
+                </div>
+                <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #1f2937;">
+                    Reset Your Password
+                </h2>
+                <p style="font-size: 16px; line-height: 1.5; color: #4b5563;">
+                    We received a request to reset the password for your account. Click the button below to choose a new password. This link will expire in <strong>5 minutes</strong>.
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{$resetLink}"
+                    style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #fff; background: linear-gradient(to right, #4f46e5, #0ea5e9); border-radius: 6px; text-decoration: none; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);">
+                    Reset Password
+                    </a>
+                </div>
+                <p style="font-size: 14px; color: #6b7280;">
+                    If you did not request a password reset, you can safely ignore this email. Your account remains secure.
+                </p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                <div style="text-align: center;">
+                    <p style="font-size: 12px; color: #9ca3af;">
+                        © 2026 SmartHire. All rights reserved.<br>
+                        Bembla, Monastir
+                    </p>
+                </div>
+            </div>
+            HTML;
+
+        \Log::info('📧 Sending email...');
+
+        Mail::html($mailHtml, function ($message) use ($request) {
+            $message->to($request->email)
+                    ->subject('Reset Your Password - SmartHire');
+        });
+        
+        \Log::info('✅ Mail sent successfully');
+        
+        return response()->json([
+            'message' => 'Reset password email sent successfully'
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $ve) {
+        \Log::error('❌ Validation error: ' . json_encode($ve->errors()));
+        return response()->json([
+            'error' => 'Validation failed',
+            'errors' => $ve->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        \Log::error('❌ Exception in sendMail: ' . $e->getMessage());
+        \Log::error('❌ Line: ' . $e->getLine());
+        
+        return response()->json([
+            'error' => 'Failed to send reset email',
+            'message' => $e->getMessage()
+        ], 500);
+    } finally {
+        \Log::info('=== sendMail END ===');
     }
+}
 
 
     private function getWorkerIdFromToken($token)
