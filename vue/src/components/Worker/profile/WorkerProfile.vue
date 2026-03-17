@@ -112,6 +112,14 @@ const logoPreview = ref(null);
 const selectedResumeFile = ref(null);
 
 onMounted(async () => {
+
+  if (!sessionStorage.getItem('profilePageReloaded')) {
+    sessionStorage.setItem('profilePageReloaded', 'true');
+    window.location.reload();
+    return;
+  }
+
+
   profile.value = getProfile();
   console.log('Loaded profile:', profile.value);
   
