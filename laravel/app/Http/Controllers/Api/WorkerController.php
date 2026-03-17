@@ -51,64 +51,39 @@ public function register(Request $request)
             ], 422);
         }
 
-        // ========== FIXED: Handle photo upload ==========
+        // Handle photo upload to S3
         $photoUrl = null;
         if ($request->hasFile('profile')) {
             $file = $request->file('profile');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             
-            // ✅ FIXED: Store correctly (without extra 'public' in path)
-            $path = $file->storeAs('workers/photos', $filename, 'public');
-            
-            // ✅ FIXED: Generate clean URL without /storage/public/
-            $photoUrl = asset('storage/workers/photos/' . $filename);
+            Storage::disk('s3')->putFileAs('workers/photos', $file, $filename, 'public');
+            $photoUrl = 'https://smarthire-uploads.s3.amazonaws.com/workers/photos/' . $filename;
 
-            // ✅ ALSO ENSURE FILE IS ACCESSIBLE IN PUBLIC STORAGE
-            $sourcePath = storage_path('app/public/workers/photos/' . $filename);
-            $targetPath = public_path('storage/workers/photos/' . $filename);
-            
-            // Create directory if it doesn't exist
-            if (!file_exists(dirname($targetPath))) {
-                mkdir(dirname($targetPath), 0755, true);
-            }
-            
-            // Create symbolic link or copy file
-            if (!file_exists($targetPath)) {
-                // Try symlink first
-                if (!@symlink($sourcePath, $targetPath)) {
-                    // If symlink fails, copy the file
-                    copy($sourcePath, $targetPath);
-                }
-            }
-            
-            \Log::info('Profile photo uploaded:', [
-                'filename' => $filename,
-                'path' => $path,
-                'url' => $photoUrl
-            ]);
+            \Log::info('Profile photo uploaded to S3:', ['url' => $photoUrl]);
         }
 
-        $workerId = 'WRK_' . uniqid(); 
+        $workerId = 'WRK_' . uniqid();
 
         $stmt = $pdo->prepare(
             "INSERT INTO workers (id, fullname, email, password, photoUrl) VALUES (?, ?, ?, ?, ?)"
         );
 
         $stmt->execute([
-            $workerId,     
+            $workerId,
             $request->fullName,
             $request->email,
             Hash::make($request->password),
             $photoUrl
         ]);
 
-        $urlsCompteId = 'URL_' . uniqid(); 
+        $urlsCompteId = 'URL_' . uniqid();
         $urlsStmt = $pdo->prepare(
             "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'worker')"
         );
         $urlsStmt->execute([$urlsCompteId, $workerId]);
 
-        $workerCvId = 'CV_' . uniqid(); 
+        $workerCvId = 'CV_' . uniqid();
         $cvStmt = $pdo->prepare(
             "INSERT INTO WorkerCV (id, worker_id) VALUES (?, ?)"
         );
@@ -191,8 +166,6 @@ public function register(Request $request)
 public function updateinfo(Request $request)
 {
     \Log::info('--- WORKER UPDATE INFO START ---');
-    \Log::info('Request data:', $request->all());
-    \Log::info('Has profile file:', ['profile' => $request->hasFile('profile')]);
 
     $validator = Validator::make($request->all(), [
         'fullName' => 'required|string|max:255',
@@ -214,63 +187,32 @@ public function updateinfo(Request $request)
         $pdo = $this->pdo();
         $workerId = $this->getWorkerIdFromToken($request->bearerToken());
 
-        // ================= PHOTO =================
+        // Get current photo
         $photoStmt = $pdo->prepare("SELECT photoUrl FROM workers WHERE id = ?");
         $photoStmt->execute([$workerId]);
         $currentPhoto = $photoStmt->fetchColumn();
-
         $newPhotoUrl = $currentPhoto;
- 
+
         if ($request->hasFile('profile')) {
             \Log::info('New profile photo detected');
 
-            // Delete old photo if exists
-            if ($currentPhoto) {
-                $oldFilename = basename($currentPhoto);
-                $oldFile = 'public/workers/photos/' . $oldFilename;
-                \Log::info('Deleting old photo:', ['path' => $oldFile]);
-                Storage::delete($oldFile);
-                
-                // Also delete from public storage
-                $oldPublicFile = public_path('storage/workers/photos/' . $oldFilename);
-                if (file_exists($oldPublicFile)) {
-                    unlink($oldPublicFile);
-                    \Log::info('Deleted old photo from public storage');
-                }
+            // Delete old photo from S3 if exists
+            if ($currentPhoto && str_contains($currentPhoto, 's3.amazonaws.com')) {
+                $oldKey = ltrim(parse_url($currentPhoto, PHP_URL_PATH), '/');
+                Storage::disk('s3')->delete($oldKey);
+                \Log::info('Old S3 photo deleted:', ['key' => $oldKey]);
             }
 
             $file = $request->file('profile');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            \Log::info('Storing new photo:', ['filename' => $filename]);
 
-            // ✅ STORE IN STORAGE (correct path)
-            $path = $file->storeAs('workers/photos', $filename, 'public');
-            
-            // ✅ GENERATE CLEAN URL
-            $newPhotoUrl = asset('storage/workers/photos/' . $filename);
+            Storage::disk('s3')->putFileAs('workers/photos', $file, $filename, 'public');
+            $newPhotoUrl = 'https://smarthire-uploads.s3.amazonaws.com/workers/photos/' . $filename;
 
-            // ✅ AUTO-COPY TO PUBLIC STORAGE (THIS IS CRITICAL!)
-            $sourcePath = storage_path('app/public/workers/photos/' . $filename);
-            $targetPath = public_path('storage/workers/photos/' . $filename);
-            $targetDir = dirname($targetPath);
-            
-            // Create directory if it doesn't exist
-            if (!file_exists($targetDir)) {
-                mkdir($targetDir, 0755, true);
-                \Log::info('Created directory:', ['dir' => $targetDir]);
-            }
-            
-            // Copy file to public storage
-            if (!file_exists($targetPath)) {
-                copy($sourcePath, $targetPath);
-                chmod($targetPath, 0644);
-                \Log::info('File auto-copied to public storage:', ['path' => $targetPath]);
-            }
-
-            \Log::info('New photo stored and published:', ['url' => $newPhotoUrl]);
+            \Log::info('New photo uploaded to S3:', ['url' => $newPhotoUrl]);
         }
 
-        // ================= UPDATE WORKER =================
+        // Update worker
         $stmt = $pdo->prepare("
             UPDATE workers 
             SET fullname = ?, email = ?, photoUrl = ?, location = ?, industry = ?
@@ -286,7 +228,7 @@ public function updateinfo(Request $request)
             $workerId
         ]);
 
-        // ================= URLS =================
+        // Update URLs
         $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM UrlsCompte WHERE user_id = ? AND user_type = 'worker'");
         $checkStmt->execute([$workerId]);
 
@@ -310,7 +252,7 @@ public function updateinfo(Request $request)
         }
 
         return response()->json([
-            'status' => 'success', 
+            'status' => 'success',
             'message' => 'Worker updated successfully',
             'data' => [
                 'fullname' => $request->fullName,
@@ -326,81 +268,51 @@ public function updateinfo(Request $request)
             'message' => $e->getMessage(),
             'line' => $e->getLine()
         ]);
-
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 }
 
 public function uploadCV(Request $request)
 {
-    
     \Log::info('--- CV UPLOAD START ---');
-    \Log::info('Has CV file:', ['cv' => $request->hasFile('cv')]);
 
     $validator = Validator::make($request->all(), [
         'cv' => 'required|file',
     ]);
 
     if ($validator->fails()) {
-        \Log::error('CV validation failed:', $validator->errors()->toArray());
-        return response()->json([
-            'status' => 'error', 
-            'errors' => $validator->errors()
-        ], 422);
+        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
     }
 
     try {
-        \Log::info('Connecting to database...');
         $pdo = $this->pdo();
-
-        \Log::info('Decoding token...');
         $workerId = $this->getWorkerIdFromToken($request->bearerToken());
-        
-        if (!$workerId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid token'
-            ], 401);
-        }
-        
-        \Log::info('Worker ID:', ['worker_id' => $workerId]);
 
-        // ================= CV UPLOAD =================
+        if (!$workerId) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid token'], 401);
+        }
+
         $cvFile = $request->file('cv');
         $cvFilename = time() . '_' . uniqid() . '_' . $cvFile->getClientOriginalName();
-        \Log::info('Saving CV file:', [
-            'filename' => $cvFilename,
-            'original_name' => $cvFile->getClientOriginalName(),
-            'size' => $cvFile->getSize(),
-            'mime_type' => $cvFile->getMimeType()
-        ]);
 
-        // Store CV file
-        $cvPath = $cvFile->storeAs('public/workers/cv', $cvFilename);
-        $cvStoragePath = Storage::url($cvPath);
+        // Upload CV to S3
+        Storage::disk('s3')->putFileAs('workers/cv', $cvFile, $cvFilename, 'public');
+        $cvUrl = 'https://smarthire-uploads.s3.amazonaws.com/workers/cv/' . $cvFilename;
 
-        \Log::info('CV stored at:', ['storage_path' => $cvStoragePath]);
+        \Log::info('CV uploaded to S3:', ['url' => $cvUrl]);
 
         // Check if worker already has a CV
         $cvCheckStmt = $pdo->prepare("SELECT id, file_path FROM WorkerCV WHERE worker_id = ?");
         $cvCheckStmt->execute([$workerId]);
         $existingCv = $cvCheckStmt->fetch();
 
-        \Log::info('Existing CV:', ['cv' => $existingCv]);
-
         if ($existingCv) {
-            \Log::info('Updating existing CV');
-
-  
-        if ($existingCv['file_path']) {
-            // Extract just the filename from the URL
-            $pathParts = explode('/', $existingCv['file_path']);
-            $filename = end($pathParts);
-            
-            $oldFilePath = 'public/workers/cv/' . $filename;
-            \Log::info('Deleting old CV file from storage:', ['path' => $oldFilePath]);
-            Storage::delete($oldFilePath);
-        }
+            // Delete old CV from S3 if exists
+            if (!empty($existingCv['file_path']) && str_contains($existingCv['file_path'], 's3.amazonaws.com')) {
+                $oldKey = ltrim(parse_url($existingCv['file_path'], PHP_URL_PATH), '/');
+                Storage::disk('s3')->delete($oldKey);
+                \Log::info('Old CV deleted from S3:', ['key' => $oldKey]);
+            }
 
             $cvStmt = $pdo->prepare("
                 UPDATE WorkerCV SET 
@@ -412,17 +324,15 @@ public function uploadCV(Request $request)
             ");
 
             $cvStmt->execute([
-                $cvStoragePath,
+                $cvUrl,
                 $cvFile->getClientOriginalName(),
                 $cvFile->getSize(),
                 $workerId
             ]);
 
             $cvId = $existingCv['id'];
-            \Log::info('CV updated', ['cv_id' => $cvId]);
-        } else {
-            \Log::info('Inserting new CV');
 
+        } else {
             $cvId = 'CV_' . uniqid();
             $cvStmt = $pdo->prepare("
                 INSERT INTO WorkerCV 
@@ -433,23 +343,21 @@ public function uploadCV(Request $request)
             $cvStmt->execute([
                 $cvId,
                 $workerId,
-                $cvStoragePath,
+                $cvUrl,
                 $cvFile->getClientOriginalName(),
                 $cvFile->getSize()
             ]);
-
-            \Log::info('CV inserted', ['cv_id' => $cvId]);
         }
 
         \Log::info('--- CV UPLOAD SUCCESS ---');
 
         return response()->json([
-            'status' => 'success', 
+            'status' => 'success',
             'message' => 'CV uploaded successfully',
             'data' => [
                 'id' => $cvId,
                 'original_name' => $cvFile->getClientOriginalName(),
-                'file_path' => $cvStoragePath,
+                'file_path' => $cvUrl,
                 'file_size' => $cvFile->getSize(),
                 'uploaded_at' => date('Y-m-d H:i:s')
             ]
@@ -458,12 +366,10 @@ public function uploadCV(Request $request)
     } catch (\Exception $e) {
         \Log::error('CV UPLOAD ERROR', [
             'message' => $e->getMessage(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
+            'line' => $e->getLine()
         ]);
-
         return response()->json([
-            'status' => 'error', 
+            'status' => 'error',
             'message' => 'Failed to upload CV: ' . $e->getMessage()
         ], 500);
     }
@@ -562,7 +468,7 @@ public function deleteCv(Request $request, $cvId)
 
 public function getCvText(Request $request)
 {
-    
+    $tempPath = null;
 
     try {
         $pdo = $this->pdo();
@@ -584,24 +490,23 @@ public function getCvText(Request $request)
             ], 400);
         }
 
-        // Convert URL to storage path
-        $relativePath = str_replace(
-            url('/storage') . '/',
-            '',
-            $cvUrl
-        );
+        // Download CV from S3 to temp file for parsing
+        $s3Key = ltrim(parse_url($cvUrl, PHP_URL_PATH), '/');
+        $tempPath = sys_get_temp_dir() . '/' . basename($cvUrl);
 
-        $fullPath = storage_path('app/public/' . $relativePath);
+        $s3Contents = Storage::disk('s3')->get($s3Key);
 
-        if (!file_exists($fullPath)) {
+        if (!$s3Contents) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'CV file not found'
+                'message' => 'CV file not found on S3'
             ], 404);
         }
 
+        file_put_contents($tempPath, $s3Contents);
+
         $parser = new \Smalot\PdfParser\Parser();
-        $pdf = $parser->parseFile($fullPath);
+        $pdf = $parser->parseFile($tempPath);
         
         // Get the raw text
         $rawText = $pdf->getText();
@@ -628,16 +533,21 @@ public function getCvText(Request $request)
         ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
     } catch (\Throwable $e) {
-        // Log error for debugging
         \Log::error('CV Parser Error:', [
             'message' => $e->getMessage(),
-            'path' => $fullPath ?? 'N/A'
+            'path' => $tempPath ?? 'N/A'
         ]);
         
         return response()->json([
             'status' => 'error',
             'message' => 'Failed to extract CV text: ' . $e->getMessage()
         ], 500, [], JSON_UNESCAPED_UNICODE);
+
+    } finally {
+        // Always clean up temp file
+        if ($tempPath && file_exists($tempPath)) {
+            @unlink($tempPath);
+        }
     }
 }
 

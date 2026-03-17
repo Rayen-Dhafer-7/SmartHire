@@ -30,7 +30,7 @@ public function register(Request $request)
         'password'    => 'required|string',
         'location'    => 'required|string|max:255',
         'industry'    => 'required|string',
-        'logo'        => 'nullable|image|max:2048', // Keep as 'logo'
+        'logo'        => 'nullable|image|max:2048',
     ]);
 
     if ($validator->fails()) {
@@ -50,41 +50,21 @@ public function register(Request $request)
             ], 422);
         }
 
-        // ========== FIXED: Handle logo upload ==========
-        $logoUrl = null; // ✅ Use $logoUrl (matches column name)
+        // Handle logo upload to S3
+        $logoUrl = null;
 
-        if ($request->hasFile('logo')) { // ✅ Check 'logo' (matches validation)
+        if ($request->hasFile('logo')) {
             $file = $request->file('logo');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
-            // ✅ Store in companies/logos (correct folder)
-            $path = $file->storeAs('companies/logos', $filename, 'public');
+            Storage::disk('s3')->putFileAs('companies/logos', $file, $filename, 'public');
+            $logoUrl = 'https://smarthire-uploads.s3.amazonaws.com/companies/logos/' . $filename;
 
-            // ✅ Generate clean URL without /storage/public/
-            $logoUrl = asset('storage/companies/logos/' . $filename);
-
-            // ✅ Also ensure file is accessible in public storage
-            $sourcePath = storage_path('app/public/companies/logos/' . $filename);
-            $targetPath = public_path('storage/companies/logos/' . $filename);
-            
-            if (!file_exists(dirname($targetPath))) {
-                mkdir(dirname($targetPath), 0755, true);
-            }
-            
-            if (!file_exists($targetPath)) {
-                copy($sourcePath, $targetPath);
-                chmod($targetPath, 0644);
-            }
-
-            \Log::info('Logo uploaded:', [
-                'filename' => $filename,
-                'path' => $path,
-                'url' => $logoUrl
-            ]);
+            \Log::info('Logo uploaded to S3:', ['url' => $logoUrl]);
         }
 
         // Generate custom company ID
-        $companyId = 'CMP_' . uniqid(); 
+        $companyId = 'CMP_' . uniqid();
 
         // Insert company
         $stmt = $pdo->prepare(
@@ -99,11 +79,11 @@ public function register(Request $request)
             Hash::make($request->password),
             $request->location,
             $request->industry,
-            $logoUrl // ✅ Using $logoUrl
+            $logoUrl
         ]);
 
         // Create UrlsCompte entry
-        $urlsCompteId = 'URL_' . uniqid(); 
+        $urlsCompteId = 'URL_' . uniqid();
         $urlsStmt = $pdo->prepare(
             "INSERT INTO UrlsCompte (id, user_id, user_type) VALUES (?, ?, 'company')"
         );
@@ -115,7 +95,7 @@ public function register(Request $request)
             'company_id' => $companyId,
             'companyName' => $request->companyName,
             'email' => $request->email,
-            'logoUrl' => $logoUrl // ✅ Using $logoUrl
+            'logoUrl' => $logoUrl
         ], 201);
 
     } catch (PDOException $e) {
@@ -151,7 +131,7 @@ public function updateinfo(Request $request)
         $pdo = $this->pdo();
         $companyId = $this->getCompanyIdFromToken($request->bearerToken());
 
-        // Handle Logo
+        // Get current logo
         $getLogoStmt = $pdo->prepare("SELECT logoUrl FROM companies WHERE id = ?");
         $getLogoStmt->execute([$companyId]);
         $currentLogoUrl = $getLogoStmt->fetchColumn();
@@ -161,48 +141,20 @@ public function updateinfo(Request $request)
             \Log::info('New logo detected');
             $file = $request->file('logo');
 
-            // Delete old logo if exists
-            if ($currentLogoUrl) {
-                $oldFilename = basename(parse_url($currentLogoUrl, PHP_URL_PATH));
-                Storage::delete('public/companies/logos/' . $oldFilename);
-                
-                // Also delete from public storage
-                $oldPublicFile = public_path('storage/companies/logos/' . $oldFilename);
-                if (file_exists($oldPublicFile)) {
-                    unlink($oldPublicFile);
-                }
+            // Delete old logo from S3 if exists
+            if ($currentLogoUrl && str_contains($currentLogoUrl, 's3.amazonaws.com')) {
+                $oldKey = parse_url($currentLogoUrl, PHP_URL_PATH);
+                $oldKey = ltrim($oldKey, '/');
+                Storage::disk('s3')->delete($oldKey);
+                \Log::info('Old S3 logo deleted:', ['key' => $oldKey]);
             }
 
-            // Store correctly
+            // Upload new logo to S3
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('companies/logos', $filename, 'public');
-            
-            // Generate clean URL
-            $newLogoUrl = asset('storage/companies/logos/' . $filename);
-            
-            // ✅ ENSURE FILE IS ACCESSIBLE IN PUBLIC STORAGE
-            $sourcePath = storage_path('app/public/companies/logos/' . $filename);
-            $targetPath = public_path('storage/companies/logos/' . $filename);
-            
-            // Create directory if it doesn't exist
-            if (!file_exists(dirname($targetPath))) {
-                mkdir(dirname($targetPath), 0755, true);
-            }
-            
-            // Create symbolic link or copy file
-            if (!file_exists($targetPath)) {
-                // Try symlink first (better for disk space)
-                if (!@symlink($sourcePath, $targetPath)) {
-                    // If symlink fails, copy the file
-                    copy($sourcePath, $targetPath);
-                }
-            }
-            
-            \Log::info('New logo stored and published:', [
-                'url' => $newLogoUrl,
-                'source' => $sourcePath,
-                'target' => $targetPath
-            ]);
+            Storage::disk('s3')->putFileAs('companies/logos', $file, $filename, 'public');
+            $newLogoUrl = 'https://smarthire-uploads.s3.amazonaws.com/companies/logos/' . $filename;
+
+            \Log::info('New logo uploaded to S3:', ['url' => $newLogoUrl]);
         }
 
         // Update company info
