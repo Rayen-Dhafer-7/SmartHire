@@ -112,9 +112,10 @@ const logout = () => {
 }
 </script>
 <style scoped>
+/* Modern Sidebar */
 .sidebar {
-  background-color: #ffffff;
-  width: 250px;
+  background-color: var(--white);
+  width: 260px;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -122,78 +123,152 @@ const logout = () => {
   left: 0;
   top: 0;
   z-index: 1000;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border-color);
+  transition: all var(--transition-base);
+  overflow-y: auto;
 }
 
+/* Brand Section */
 .brand {
   padding: 1.5rem;
   font-size: 1.25rem;
   font-weight: 700;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #4f46e5;
+  gap: 10px;
+  color: var(--primary-color);
+  transition: all var(--transition-fast);
+  height: 80px;
 }
 
-.brand i {
-  color: #4f46e5;
+.brand:hover {
+  transform: scale(1.03);
 }
 
+.brand-logo {
+  position: relative;
+  height: 40px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  transition: transform var(--transition-fast);
+}
+
+.brand:hover .brand-logo {
+  transform: translateY(-2px);
+}
+
+.brand-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--primary-color);
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.brand:hover .brand-name {
+  color: var(--primary-dark);
+}
+
+/* Navigation Menu */
 .nav-menu {
   flex: 1;
   padding: 1rem 0;
   overflow-y: auto;
 }
 
+.nav-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+/* Navigation Items */
 .nav-item {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0.75rem 1.5rem;
+  padding: 10px 16px;
+  margin: 0 8px;
   background: none;
   border: none;
-  color: #000000c4;
+  color: var(--text-gray);
   text-align: left;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
+  border-radius: 8px;
   border-left: 3px solid transparent;
 }
 
 .nav-item:hover {
-  background-color: #4e46e51e;
+  background-color: var(--bg-light);
+  color: var(--text-main);
+  transform: translateX(4px);
 }
 
 .nav-item.active {
-  background-color: rgba(79, 70, 229, 0.1);
-  color: #4f46e5;
-  border-left-color: #4f46e5;
+  background: linear-gradient(135deg, rgba(13, 124, 140, 0.1) 0%, rgba(13, 124, 140, 0.05) 100%);
+  color: var(--primary-color);
+  border-left-color: var(--primary-color);
+  font-weight: 600;
 }
 
 .nav-item i {
-  font-size: 1rem;
+  font-size: 1.1rem;
   width: 24px;
+  text-align: center;
+  margin-right: 8px;
+}
+
+/* Logout Item */
+.logout-item {
+  color: var(--error);
+}
+
+.logout-item:hover {
+  background-color: var(--error-light);
+  color: var(--error);
 }
 
 /* User Info at Bottom */
 .user-info-bottom {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-color);
   padding: 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background-color: #f9fafb;
+  background-color: var(--bg-light);
+  transition: all var(--transition-base);
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.user-avatar:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .company-logo {
@@ -211,49 +286,36 @@ const logout = () => {
 .user-name {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #1f2937;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color var(--transition-fast);
 }
 
-.logout-btn-bottom {
-  background: none;
-  border: none;
-  color: #ee2d20;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
+.user-info-bottom:hover .user-name {
+  color: var(--primary-color);
 }
 
-.logout-btn-bottom:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-/* Logout button in nav menu */
-.logout-item {
-  color: #f02323;
-}
-
-.logout-item:hover {
-  background-color: #f023233a;
-}
-
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
   .sidebar {
-    width: 220px;
+    width: 240px;
+  }
+  
+  .brand {
+    height: auto;
+    padding: 1.25rem;
   }
   
   .nav-item {
-    padding: 0.75rem 1rem;
+    padding: 10px 12px;
     font-size: 0.9rem;
+    margin: 0 4px;
+  }
+  
+  .nav-item i {
+    width: 20px;
   }
   
   .user-info-bottom {
@@ -261,59 +323,17 @@ const logout = () => {
   }
 }
 
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0px;
-  padding: 8px 12px;
-  text-decoration: none;
-  color: inherit;
-}
-
-.brand-logo {
-  position: relative;
-  height: 40px;
-  width: auto;
-  max-width: 120px;
-  object-fit: contain;
-  transition: transform 0.2s ease;
-}
-
-.brand:hover {
-  transform: scale(1.05);
-}
-
-.brand-name {
-  font-size: 1.45rem;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  color: #333; /* Change to your preferred color */
-  white-space: nowrap;
-}
-
-/* Optional: Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .brand-name {
-    color: #204aa3;
-  }
-}
-
-/* Optional: Responsive design */
-@media (max-width: 768px) {
-  .brand-logo {
-    height: 28px;
+@media (max-width: 480px) {
+  .sidebar {
+    width: 200px;
   }
   
   .brand-name {
-    font-size: 1.1rem;
-  }
-}
-
-/* Optional: If you want to hide text on mobile */
-@media (max-width: 480px) {
-  .brand-name {
     display: none;
+  }
+  
+  .brand {
+    justify-content: center;
   }
 }
 </style>

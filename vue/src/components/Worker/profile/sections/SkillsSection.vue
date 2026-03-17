@@ -51,28 +51,67 @@ const remove = (index) => {
 </script>
 
 <style scoped>
+h5 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 1.5rem;
+}
+
 .skills-tags-container {
   min-height: 50px;
-  border: 1px solid #dee2e6;
-  border-radius: 0.375rem;
-  padding: 0.75rem;
-  background-color: #f8f9fa;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem;
+  background-color: var(--bg-light);
+  transition: all var(--transition-base);
+}
+
+.skills-tags-container:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .skill-tag {
-  font-size: 0.875rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 0.375rem;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(13, 124, 140, 0.1) 0%, rgba(13, 124, 140, 0.05) 100%);
+  color: var(--primary-color);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  transition: all var(--transition-fast);
+}
+
+.skill-tag:hover {
+  background: linear-gradient(135deg, rgba(13, 124, 140, 0.15) 0%, rgba(13, 124, 140, 0.1) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .skill-tag .btn-close {
-  font-size: 0.5rem;
-  padding: 0.3rem;
+  font-size: 0.6rem;
+  padding: 0.2rem;
   margin-left: 0.25rem;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.skill-tag .btn-close:hover {
+  opacity: 1;
 }
 
 .btn-close-sm {
-  width: 0.5em;
-  height: 0.5em;
+  width: 0.6em;
+  height: 0.6em;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+  font-size: 0.9rem;
 }
 </style>

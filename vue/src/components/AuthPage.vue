@@ -500,27 +500,30 @@ onMounted(() => {
 .profile-upload-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .profile-upload-circle {
   width: 100px;
   height: 100px;
-  border-radius: 50%;
-  background-color: #f3f4f6;
-  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  background-color: var(--bg-light);
+  border: 2px dashed var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all var(--transition-base);
   position: relative;
+  box-shadow: var(--shadow-sm);
 }
 
 .profile-upload-circle:hover {
-  border-color: var(--primary-color, #4f46e5);
-  background-color: #eef2ff;
+  border-color: var(--primary-color);
+  background-color: rgba(13, 124, 140, 0.05);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .profile-preview {
@@ -533,18 +536,19 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #6b7280;
+  color: var(--text-muted);
   text-align: center;
+  gap: 0.5rem;
 }
 
 .upload-icon {
-  font-size: 24px;
-  margin-bottom: 4px;
+  font-size: 28px;
 }
 
 .upload-text {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
+  color: var(--text-gray);
 }
 
 .upload-overlay {
@@ -553,12 +557,13 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-fast);
+  backdrop-filter: blur(2px);
 }
 
 .profile-upload-circle:hover .upload-overlay {
@@ -567,7 +572,8 @@ onMounted(() => {
 
 .edit-icon {
   color: white;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .bg-video {
@@ -575,13 +581,13 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
   display: block;
-  animation: video-breathe 10s ease-in-out infinite;
+  animation: video-breathe 12s ease-in-out infinite;
 }
 
 @keyframes video-breathe {
-  0%   { transform: scale(1.05) rotate(0deg); }
-  50%  { transform: scale(1.08) rotate(0.3deg); }
-  100% { transform: scale(1.05) rotate(0deg); }
+  0%   { transform: scale(1.05); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1.05); }
 }
 
 /* Forgot Password Link */
@@ -593,15 +599,16 @@ onMounted(() => {
 }
 
 .forgot-password-link {
-  font-size: 0.875rem;
-  color: var(--primary-color, #4f46e5);
+  font-size: 0.85rem;
+  color: var(--primary-color);
   text-decoration: none;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color var(--transition-fast);
+  font-weight: 500;
 }
 
 .forgot-password-link:hover {
-  color: var(--primary-dark, #4338ca);
+  color: var(--primary-dark);
   text-decoration: underline;
 }
 
@@ -621,6 +628,15 @@ onMounted(() => {
   }
 }
 
+/* Header Section */
+.header-section {
+  margin-bottom: 2rem;
+}
+
+.header-section h1 {
+  margin-bottom: 0.75rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .password-header {
@@ -631,6 +647,11 @@ onMounted(() => {
   
   .forgot-password-link {
     align-self: flex-end;
+  }
+  
+  .profile-upload-circle {
+    width: 80px;
+    height: 80px;
   }
 }
 </style>

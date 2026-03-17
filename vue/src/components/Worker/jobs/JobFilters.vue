@@ -88,63 +88,148 @@ const handleToggleChange = () => {
 </script>
 
 <style scoped>
-.input-group-text {
-  border-right: none;
-  color: #6c757d;
+/* Modern Filter Card */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
 }
 
-.form-control:focus {
-  box-shadow: none;
-  border-color: #4f46e5;
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: transparent;
+}
+
+.card-body {
+  padding: 1.5rem !important;
+}
+
+/* Input Groups */
+.input-group-text {
+  border-right: none;
+  color: var(--text-muted);
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.input-group:focus-within .input-group-text {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .form-control {
+  border: 1px solid var(--border-color);
   border-left: none;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
 }
 
-/* Fix for left border on focus when grouped */
-.input-group .form-control:focus {
-    z-index: 3;
-    border-left: 1px solid #4f46e5;
-    margin-left: -1px;
+.form-control::placeholder {
+  color: var(--text-muted);
 }
 
-/* Toggle switch styling */
-.form-switch .form-check-input {
-  width: 2.5em;
-  height: 1.25em;
+.form-control:hover {
+  border-color: var(--border-light);
+  background-color: var(--bg-lighter);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(13, 124, 140, 0.1);
+  background-color: var(--white);
+}
+
+/* Form Select */
+.form-select {
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+}
+
+.form-select:hover {
+  border-color: var(--border-light);
+  background-color: var(--bg-lighter);
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(13, 124, 140, 0.1);
+}
+
+.form-select option {
+  color: var(--text-main);
+}
+
+/* Form Label */
+.form-label {
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+/* Toggle Switch */
+.form-check-input {
+  width: 44px;
+  height: 24px;
+  border: 2px solid var(--border-color);
   cursor: pointer;
-  margin-top: 0;
+  transition: all var(--transition-fast);
 }
 
-.form-switch .form-check-input:checked {
-  background-color: #4f46e5;
-  border-color: #4f46e5;
+.form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
-.form-switch .form-check-input:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
+.form-check-input:hover {
+  border-color: var(--primary-color);
+}
+
+.form-check-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 124, 140, 0.2);
+}
+
+/* Toggle Labels */
+.text-muted {
+  color: var(--text-muted) !important;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
 }
 
 .text-primary {
-  color: #4f46e5 !important;
+  color: var(--primary-color) !important;
+  font-weight: 600;
 }
 
-/* Adjust column widths for better alignment */
-.col-md-3:last-child {
-  display: flex;
-  justify-content: flex-end;
+/* Icons */
+.bi {
+  margin-right: 4px;
 }
 
-/* Ensure toggle aligns properly on mobile */
-@media (max-width: 767px) {
-  .col-md-2:last-child {
-    margin-top: 10px;
+/* Responsive */
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1rem !important;
   }
   
-  .d-flex.align-items-center.justify-content-end {
-    justify-content: flex-start !important;
+  .row {
+    gap: 0.75rem !important;
+  }
+  
+  .form-label {
+    font-size: 0.8rem;
   }
 }
 </style>

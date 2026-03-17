@@ -77,89 +77,153 @@ const logout = () => {
 </script>
 
 <style scoped>
-/* Top Navbar Overrides from parent or dashboard.css logic, here explicit for component */
+/* Modern Top Navbar */
 .top-navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0.75rem 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background-color: var(--white);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.875rem 2rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
 }
 
-.brand-text {
-  color: #4f46e5;
-  font-size: 1.25rem;
+.top-navbar:hover {
+  box-shadow: var(--shadow-md);
 }
 
+/* Brand Section */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--transition-fast);
+}
+
+.brand:hover {
+  transform: scale(1.03);
+}
+
+.brand-logo {
+  position: relative;
+  height: 40px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  transition: transform var(--transition-fast);
+}
+
+.brand:hover .brand-logo {
+  transform: translateY(-2px);
+}
+
+.brand-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--primary-color);
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.brand:hover .brand-name {
+  color: var(--primary-dark);
+}
+
+/* Navigation Menu */
 .nav-menu-horizontal {
   display: flex;
-  gap: 0.5rem;
-  margin-left: 4.9rem;
+  gap: 0.75rem;
+  margin-left: 3.5rem;
 }
 
 .nav-link-custom {
-  color: #64748b;
+  color: var(--text-gray);
   font-weight: 500;
-  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  padding: 8px 14px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
   border: none;
   background: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .nav-link-custom:hover {
-  background-color: #f3f4f6;
-  color: #1e293b;
+  background-color: var(--bg-light);
+  color: var(--text-main);
+  transform: translateY(-2px);
 }
 
 .nav-link-custom.active {
-  background-color: #eef2ff;
-  color: #4f46e5;
+  background: linear-gradient(135deg, rgba(13, 124, 140, 0.1) 0%, rgba(13, 124, 140, 0.05) 100%);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.nav-link-custom i {
+  font-size: 1rem;
+}
+
+/* User Info & Avatar */
+.user-info {
+  color: var(--text-main);
+  font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .profile-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 8px;
   object-fit: cover;
-  border: 2px solid #e5e7eb;
-  transition: border-color 0.3s ease;
+  border: 2px solid var(--border-color);
+  transition: all var(--transition-fast);
+  cursor: pointer;
 }
 
 .profile-avatar:hover {
-  border-color: #4f46e5;
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+  transform: scale(1.05);
 }
 
-.user-info {
-  color: #1e293b;
-}
-
+/* Logout Button */
 .logout-btn-custom {
   background: none;
   border: none;
-  color: #ef4444;
-  font-weight: 500;
+  color: var(--error);
+  font-weight: 600;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 8px 14px;
   border-radius: 8px;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
   cursor: pointer;
 }
 
 .logout-btn-custom:hover {
-  background-color: #fef2f2;
-  color: #dc2626;
+  background-color: var(--error-light);
+  color: var(--error);
+  transform: translateY(-2px);
 }
 
+.logout-btn-custom i {
+  font-size: 1rem;
+}
+
+/* Responsive Design */
 @media (max-width: 991px) {
   .top-navbar {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.25rem;
   }
   
   .nav-menu-horizontal {
@@ -167,12 +231,12 @@ const logout = () => {
     margin-left: 0;
     margin-top: 1rem;
     width: 100%;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
   
   .nav-link-custom {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 10px 12px;
     justify-content: flex-start;
   }
   
@@ -183,60 +247,27 @@ const logout = () => {
   }
 }
 
-
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0px;
-  padding: 8px 12px;
-  text-decoration: none;
-  color: inherit;
-}
-
-.brand-logo {
-  position: relative;
-  height: 40px;
-  width: auto;
-  max-width: 120px;
-  object-fit: contain;
-  transition: transform 0.2s ease;
-}
-
-.brand:hover {
-  transform: scale(1.05);
-}
-
-.brand-name {
-  font-size: 1.45rem;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  color: #333; /* Change to your preferred color */
-  white-space: nowrap;
-}
-
-/* Optional: Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .brand-name {
-    color: #204aa3;
-  }
-}
-
-/* Optional: Responsive design */
 @media (max-width: 768px) {
   .brand-logo {
-    height: 28px;
+    height: 32px;
   }
   
   .brand-name {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+  }
+  
+  .nav-menu-horizontal {
+    margin-left: 0;
   }
 }
 
-/* Optional: If you want to hide text on mobile */
 @media (max-width: 480px) {
   .brand-name {
     display: none;
+  }
+  
+  .brand {
+    gap: 6px;
   }
 }
 </style>

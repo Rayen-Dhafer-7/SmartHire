@@ -1,15 +1,6 @@
 /* ============================= */
-/* SMART HIRE – AUTH LAYOUT     */
+/* SmartHire – Modern Auth Layout */
 /* ============================= */
-
-:root {
-    --primary-color: #4f46e5;
-    --bg-light: #f9fafb;
-    --white: #ffffff;
-    --text-main: #1f2937;
-    --text-muted: #6b7280;
-    --border-color: #e5e7eb;
-}
 
 * {
     box-sizing: border-box;
@@ -68,9 +59,9 @@
     position: absolute;
     inset: 0;
     background: linear-gradient(120deg,
-            transparent 30%,
-            rgba(255, 255, 255, 0.35),
-            transparent 70%);
+            transparent 20%,
+            rgba(255, 255, 255, 0.25),
+            transparent 80%);
     transform: translateX(-130%) skewX(-20deg);
     transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
