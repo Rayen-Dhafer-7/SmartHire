@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="form-section-title">General Information</div>
+    <div class="form-section-title">General Information 33</div>
     <div class="grid-3 mb-4">
       <div class="mb-3">
         <label class="form-label">Company Name</label>

@@ -61,8 +61,7 @@ public function register(Request $request)
             $path = $file->storeAs('workers/photos', $filename, 'public');
             
             // ✅ FIXED: Generate clean URL without /storage/public/
-            $photoUrl = config('app.url') . '/storage/workers/photos/' . $filename;
-
+            $photoUrl = asset('storage/workers/photos/' . $filename);
 
             // ✅ ALSO ENSURE FILE IS ACCESSIBLE IN PUBLIC STORAGE
             $sourcePath = storage_path('app/public/workers/photos/' . $filename);
@@ -248,8 +247,7 @@ public function updateinfo(Request $request)
             $path = $file->storeAs('workers/photos', $filename, 'public');
             
             // ✅ GENERATE CLEAN URL
-            $newPhotoUrl = config('app.url') . '/storage/workers/photos/' . $filename;
-
+            $newPhotoUrl = asset('storage/workers/photos/' . $filename);
 
             // ✅ AUTO-COPY TO PUBLIC STORAGE (THIS IS CRITICAL!)
             $sourcePath = storage_path('app/public/workers/photos/' . $filename);
@@ -379,8 +377,7 @@ public function uploadCV(Request $request)
 
         // Store CV file
         $cvPath = $cvFile->storeAs('public/workers/cv', $cvFilename);
-        $cvStoragePath = config('app.url') . '/storage/workers/cv/' . $cvFilename;
-
+        $cvStoragePath = Storage::url($cvPath);
 
         \Log::info('CV stored at:', ['storage_path' => $cvStoragePath]);
 
@@ -512,6 +509,8 @@ public function updatepass(Request $request)
 
 public function deleteCv(Request $request, $cvId)
 {
+   
+
     try {
         $pdo = $this->pdo();
         $workerId = $this->getWorkerIdFromToken($request->bearerToken());
@@ -532,28 +531,10 @@ public function deleteCv(Request $request, $cvId)
             ], 404);
         }
 
-        // Delete file from storage - FIXED PATH EXTRACTION
+        // Delete file from storage
         if (!empty($cv['file_path'])) {
-            // Extract filename from URL
-            $urlParts = explode('/', $cv['file_path']);
-            $filename = end($urlParts);
-            
-            // Build storage path
-            $storagePath = 'public/workers/cv/' . $filename;
-            
-            \Log::info('Deleting CV file:', [
-                'url' => $cv['file_path'],
-                'filename' => $filename,
-                'storage_path' => $storagePath
-            ]);
-            
+            $storagePath = str_replace('/storage/', 'public/', $cv['file_path']);
             Storage::delete($storagePath);
-            
-            // Also delete from public directory if it exists
-            $publicPath = public_path('storage/workers/cv/' . $filename);
-            if (file_exists($publicPath)) {
-                unlink($publicPath);
-            }
         }
 
         // Delete record
@@ -569,14 +550,9 @@ public function deleteCv(Request $request, $cvId)
         ]);
 
     } catch (\Exception $e) {
-        \Log::error('CV Delete Error:', [
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
         return response()->json([
             'status' => 'error',
-            'message' => 'Failed to delete CV: ' . $e->getMessage()
+            'message' => $e->getMessage()
         ], 500);
     }
 }

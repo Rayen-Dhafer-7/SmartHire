@@ -58,8 +58,7 @@ public function register(Request $request)
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
             // ✅ Store in companies/logos (correct folder)
-            $photoUrl = config('app.url') . '/storage/workers/photos/' . $filename;
-
+            $path = $file->storeAs('companies/logos', $filename, 'public');
 
             // ✅ Generate clean URL without /storage/public/
             $logoUrl = asset('storage/companies/logos/' . $filename);
@@ -176,8 +175,7 @@ public function updateinfo(Request $request)
 
             // Store correctly
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $photoUrl = config('app.url') . '/storage/workers/photos/' . $filename;
-
+            $path = $file->storeAs('companies/logos', $filename, 'public');
             
             // Generate clean URL
             $newLogoUrl = asset('storage/companies/logos/' . $filename);
