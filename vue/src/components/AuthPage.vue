@@ -321,9 +321,9 @@ onMounted(() => {
           <form @submit.prevent="handleSubmit">
             
             <!-- LOGIN MODE FIELDS -->
-            <div v-if="isLoginMode">
+            <div v-if="isLoginMode" class="login-form-section">
               <div class="form-group">
-                <label>Email Address</label>
+                <label>Email Address <span aria-label="required">*</span></label>
                 <input 
                   type="email" 
                   id="email"
@@ -332,12 +332,16 @@ onMounted(() => {
                   class="form-control" 
                   placeholder="name@example.com" 
                   required 
+                  aria-label="Email Address"
                 />
               </div>
+              
               <div class="form-group">
                 <div class="password-header">
-                  <label>Password</label>
-
+                  <label>Password <span aria-label="required">*</span></label>
+                  <a class="forgot-password-link" @click="showForgotPassword = true" role="button" tabindex="0">
+                    Forgot password?
+                  </a>
                 </div>
                 <input 
                   type="password" 
@@ -347,6 +351,7 @@ onMounted(() => {
                   class="form-control" 
                   placeholder="••••••••" 
                   required 
+                  aria-label="Password"
                 />
               </div>
             </div>
@@ -471,13 +476,10 @@ onMounted(() => {
             <!-- Toggle Link -->
             <div class="toggle-link">
               <span v-if="isLoginMode">
-                Don't have an account? <a @click="toggleMode">Sign up</a>
-                <br><br>
-                forgot-password-link? <a @click="showForgotPassword = true">Send mail</a>
- 
+                Don't have an account? <a @click="toggleMode" role="button" tabindex="0">Sign up</a>
               </span>
               <span v-else>
-                Already have an account? <a @click="toggleMode">Log in</a>
+                Already have an account? <a @click="toggleMode" role="button" tabindex="0">Log in</a>
               </span>
             </div>
 
@@ -630,11 +632,121 @@ onMounted(() => {
 
 /* Header Section */
 .header-section {
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
 }
 
 .header-section h1 {
   margin-bottom: 0.75rem;
+  color: var(--text-main);
+}
+
+/* Login Form Section */
+.login-form-section {
+  margin-bottom: 1.5rem;
+}
+
+.login-form-section .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.login-form-section .form-group:last-child {
+  margin-bottom: 2rem;
+}
+
+.login-form-section .form-control {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+}
+
+.login-form-section .form-control::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.login-form-section .form-control:hover {
+  border-color: var(--border-light);
+  background-color: var(--bg-lighter);
+}
+
+.login-form-section .form-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(13, 124, 140, 0.1);
+  background-color: var(--white);
+}
+
+/* Password Header with Forgot Link */
+.password-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 1rem;
+}
+
+.password-header label {
+  margin-bottom: 0;
+  flex: 0 0 auto;
+}
+
+.password-header .forgot-password-link {
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: 500;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.password-header .forgot-password-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+  transform: translateX(2px);
+}
+
+/* Submit Button Styles */
+.btn-primary {
+  width: 100%;
+  background-color: var(--primary-color);
+  color: var(--white);
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-sm);
+  opacity: 0.6;
 }
 
 /* Responsive adjustments */
@@ -645,13 +757,18 @@ onMounted(() => {
     gap: 0.5rem;
   }
   
-  .forgot-password-link {
+  .password-header .forgot-password-link {
     align-self: flex-end;
   }
   
   .profile-upload-circle {
     width: 80px;
     height: 80px;
+  }
+  
+  .header-section {
+    text-align: center;
+    margin-bottom: 2rem;
   }
 }
 </style>
