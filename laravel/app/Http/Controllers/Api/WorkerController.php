@@ -20,7 +20,7 @@ class WorkerController extends Controller
     {
         return DB::connection()->getPdo();
     }
-
+ 
 public function register(Request $request)
 {
     \Log::info('Worker Registration Request:', $request->all());
