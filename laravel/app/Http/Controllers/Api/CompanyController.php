@@ -57,10 +57,17 @@ public function register(Request $request)
             $file = $request->file('logo');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
-            Storage::disk('s3')->putFileAs('companies/logos', $file, $filename, 'public');
-            $logoUrl = 'https://smarthire-uploads.s3.amazonaws.com/companies/logos/' . $filename;
-
-            \Log::info('Logo uploaded to S3:', ['url' => $logoUrl]);
+            try {
+                Storage::disk('s3')->putFileAs('companies/logos', $file, $filename, 'public');
+                $logoUrl = 'https://smarthire-uploads.s3.amazonaws.com/companies/logos/' . $filename;
+                \Log::info('Logo uploaded to S3:', ['url' => $logoUrl]);
+            } catch (\Exception $e) {
+                \Log::error('S3 upload FAILED:', ['error' => $e->getMessage()]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to upload logo: ' . $e->getMessage()
+                ], 500);
+            }
         }
 
         // Generate custom company ID
@@ -142,12 +149,17 @@ public function updateinfo(Request $request)
             $file = $request->file('logo');
 
             // Delete old logo from S3 if exists
-            if ($currentLogoUrl && str_contains($currentLogoUrl, 's3.amazonaws.com')) {
-                $oldKey = parse_url($currentLogoUrl, PHP_URL_PATH);
-                $oldKey = ltrim($oldKey, '/');
+ // Delete old logo from S3 if exists
+        if ($currentLogoUrl && str_contains($currentLogoUrl, 's3.amazonaws.com')) {
+            try {
+                $oldKey = ltrim(parse_url($currentLogoUrl, PHP_URL_PATH), '/');
+                \Log::info('Deleting old S3 logo:', ['key' => $oldKey]);
                 Storage::disk('s3')->delete($oldKey);
-                \Log::info('Old S3 logo deleted:', ['key' => $oldKey]);
+            } catch (\Exception $e) {
+                // Don't fail the whole update if delete fails
+                \Log::warning('Could not delete old S3 logo:', ['error' => $e->getMessage()]);
             }
+}
 
             // Upload new logo to S3
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
