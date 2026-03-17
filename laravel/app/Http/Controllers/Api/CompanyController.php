@@ -58,7 +58,7 @@ public function register(Request $request)
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
             try {
-                Storage::disk('s3')->putFileAs('companies/logos', $file, $filename, 'public');
+                Storage::disk('s3')->putFileAs('companies/logos', $file, $filename);
                 $logoUrl = 'https://smarthire-uploads.s3.amazonaws.com/companies/logos/' . $filename;
                 \Log::info('Logo uploaded to S3:', ['url' => $logoUrl]);
             } catch (\Exception $e) {
@@ -163,7 +163,7 @@ public function updateinfo(Request $request)
 
             // Upload new logo to S3
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            Storage::disk('s3')->putFileAs('companies/logos', $file, $filename, 'public');
+            Storage::disk('s3')->putFileAs('companies/logos', $file, $filename);
             $newLogoUrl = 'https://smarthire-uploads.s3.amazonaws.com/companies/logos/' . $filename;
 
             \Log::info('New logo uploaded to S3:', ['url' => $newLogoUrl]);

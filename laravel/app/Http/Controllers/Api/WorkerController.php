@@ -57,7 +57,7 @@ public function register(Request $request)
             $file = $request->file('profile');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             
-            Storage::disk('s3')->putFileAs('workers/photos', $file, $filename, 'public');
+            Storage::disk('s3')->putFileAs('workers/photos', $file, $filename);
             $photoUrl = 'https://smarthire-uploads.s3.amazonaws.com/workers/photos/' . $filename;
 
             \Log::info('Profile photo uploaded to S3:', ['url' => $photoUrl]);
@@ -206,7 +206,7 @@ public function updateinfo(Request $request)
             $file = $request->file('profile');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
-            Storage::disk('s3')->putFileAs('workers/photos', $file, $filename, 'public');
+            Storage::disk('s3')->putFileAs('workers/photos', $file, $filename);
             $newPhotoUrl = 'https://smarthire-uploads.s3.amazonaws.com/workers/photos/' . $filename;
 
             \Log::info('New photo uploaded to S3:', ['url' => $newPhotoUrl]);
@@ -296,7 +296,7 @@ public function uploadCV(Request $request)
         $cvFilename = time() . '_' . uniqid() . '_' . $cvFile->getClientOriginalName();
 
         // Upload CV to S3
-        Storage::disk('s3')->putFileAs('workers/cv', $cvFile, $cvFilename, 'public');
+        Storage::disk('s3')->putFileAs('workers/cv', $cvFile, $cvFilename);
         $cvUrl = 'https://smarthire-uploads.s3.amazonaws.com/workers/cv/' . $cvFilename;
 
         \Log::info('CV uploaded to S3:', ['url' => $cvUrl]);
