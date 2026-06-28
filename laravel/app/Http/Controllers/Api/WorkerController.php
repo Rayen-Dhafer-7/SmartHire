@@ -935,32 +935,40 @@ private function buildCvHtmlFrench(
 ): string {
     $e = fn($v) => htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8');
 
-    // Sidebar: contact + skills
+    // Sidebar contact items
     $contactItems = '';
-    if (!empty($worker['email']))        $contactItems .= '<div class="contact-item">✉ ' . $e($worker['email']) . '</div>';
-    if (!empty($worker['location']))     $contactItems .= '<div class="contact-item">📍 ' . $e($worker['location']) . '</div>';
-    if (!empty($worker['url_linkedin'])) $contactItems .= '<div class="contact-item">in ' . $e($worker['url_linkedin']) . '</div>';
-    if (!empty($worker['url_github']))   $contactItems .= '<div class="contact-item">⌨ ' . $e($worker['url_github']) . '</div>';
-    if (!empty($worker['url_gmail']))    $contactItems .= '<div class="contact-item">✉ ' . $e($worker['url_gmail']) . '</div>';
+    if (!empty($worker['email']))        $contactItems .= '<div class="contact-item">' . $e($worker['email']) . '</div>';
+    if (!empty($worker['location']))     $contactItems .= '<div class="contact-item">' . $e($worker['location']) . '</div>';
+    if (!empty($worker['url_linkedin'])) $contactItems .= '<div class="contact-item">' . $e($worker['url_linkedin']) . '</div>';
+    if (!empty($worker['url_github']))   $contactItems .= '<div class="contact-item">' . $e($worker['url_github']) . '</div>';
+    if (!empty($worker['url_gmail']))    $contactItems .= '<div class="contact-item">' . $e($worker['url_gmail']) . '</div>';
 
     $skillsSidebar = '';
     foreach ($skills as $s) {
-        $skillsSidebar .= '<div class="skill-bar"><span>' . $e($s) . '</span></div>';
+        $skillsSidebar .= '<div class="skill-bar">' . $e($s) . '</div>';
     }
 
-    // Main: experience, education, projects, certifications
+    // Main content sections
     $expHtml = '';
     if ($experience) {
         $items = '';
         foreach ($experience as $exp) {
-            $end = !empty($exp['end_date']) ? $e($exp['end_date']) : 'Présent';
+            $end    = !empty($exp['end_date']) ? $e($exp['end_date']) : 'Présent';
             $period = $e($exp['start_date'] ?? '') . ' – ' . $end;
-            $desc = '';
+            $desc   = '';
             if (!empty($exp['description'])) {
                 $lines = array_filter(array_map('trim', explode("\n", $exp['description'])));
                 if ($lines) $desc = '<ul>' . implode('', array_map(fn($l) => '<li>' . $e($l) . '</li>', $lines)) . '</ul>';
             }
-            $items .= '<div class="entry"><div class="entry-top"><strong>' . $e($exp['title']) . '</strong><span class="date">' . $period . '</span></div><div class="entry-sub">' . $e($exp['company'] ?? '') . ' · ' . $e($exp['employment_type'] ?? '') . '</div>' . $desc . '</div>';
+            $items .= '
+            <div class="entry">
+              <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td><strong>' . $e($exp['title']) . '</strong></td>
+                <td align="right" width="1%" nowrap><span class="date">' . $period . '</span></td>
+              </tr></table>
+              <div class="entry-sub">' . $e($exp['company'] ?? '') . (!empty($exp['employment_type']) ? ' · ' . $e($exp['employment_type']) : '') . '</div>
+              ' . $desc . '
+            </div>';
         }
         $expHtml = '<div class="section"><div class="section-title">Expérience</div>' . $items . '</div>';
     }
@@ -970,7 +978,14 @@ private function buildCvHtmlFrench(
         $items = '';
         foreach ($education as $edu) {
             $period = trim(($edu['start_year'] ?? '') . ' – ' . ($edu['end_year'] ?? ''), ' –');
-            $items .= '<div class="entry"><div class="entry-top"><strong>' . $e($edu['degree']) . '</strong><span class="date">' . $e($period) . '</span></div><div class="entry-sub">' . $e($edu['institution'] ?? '') . '</div></div>';
+            $items .= '
+            <div class="entry">
+              <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td><strong>' . $e($edu['degree']) . '</strong></td>
+                <td align="right" width="1%" nowrap><span class="date">' . $e($period) . '</span></td>
+              </tr></table>
+              <div class="entry-sub">' . $e($edu['institution'] ?? '') . '</div>
+            </div>';
         }
         $eduHtml = '<div class="section"><div class="section-title">Formation</div>' . $items . '</div>';
     }
@@ -995,51 +1010,49 @@ private function buildCvHtmlFrench(
         $certHtml = '<div class="section"><div class="section-title">Certifications</div>' . $items . '</div>';
     }
 
+    $initial = mb_strtoupper(mb_substr($worker['fullName'], 0, 1, 'UTF-8'), 'UTF-8');
+
+    // Use a real HTML table for two-column layout — Dompdf supports <table> fully
     return '<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: "DejaVu Sans", Arial, sans-serif; font-size:9.5px; color:#1a1a1a; background:#fff; display:table; width:100%; height:100%; }
-.wrapper { display:table; width:100%; }
-.sidebar { display:table-cell; width:30%; background:#1e1b4b; color:#e0e7ff; padding:24px 14px; vertical-align:top; }
-.main { display:table-cell; width:70%; padding:24px 20px; vertical-align:top; }
-.avatar { width:64px; height:64px; border-radius:50%; background:#4f46e5; display:flex; align-items:center; justify-content:center; color:white; font-size:22px; font-weight:700; margin:0 auto 12px; text-align:center; line-height:64px; }
-.sidebar-name { text-align:center; font-size:14px; font-weight:700; color:#fff; margin-bottom:4px; }
-.sidebar-role { text-align:center; font-size:9px; color:#a5b4fc; margin-bottom:16px; }
-.sidebar-section { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#818cf8; margin:14px 0 6px; border-bottom:1px solid #312e81; padding-bottom:3px; }
-.contact-item { font-size:8.5px; color:#c7d2fe; margin-bottom:5px; word-break:break-all; }
-.skill-bar { background:#312e81; border-radius:3px; padding:4px 8px; margin-bottom:5px; font-size:8.5px; color:#e0e7ff; }
-.name-main { font-size:22px; font-weight:700; color:#1e1b4b; }
-.role-main { font-size:11px; color:#4f46e5; margin-bottom:4px; }
-.bio-main { font-size:9px; color:#475569; margin-bottom:16px; line-height:1.5; }
-.section { margin-bottom:14px; }
-.section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4f46e5; border-bottom:2px solid #4f46e5; padding-bottom:3px; margin-bottom:8px; }
-.entry { margin-bottom:8px; }
-.entry-top { display:table; width:100%; }
-.entry-top strong { display:table-cell; font-size:9.5px; color:#111; }
-.date { display:table-cell; text-align:right; font-size:8.5px; color:#64748b; white-space:nowrap; width:1%; }
+body { font-family: "DejaVu Sans", Arial, sans-serif; font-size:9.5px; color:#1a1a1a; background:#fff; }
+.avatar { width:60px; height:60px; border-radius:30px; background:#4f46e5; color:#fff; font-size:22px; font-weight:700; text-align:center; line-height:60px; margin:0 auto 10px; }
+.sidebar-name { text-align:center; font-size:13px; font-weight:700; color:#fff; margin-bottom:3px; }
+.sidebar-role { text-align:center; font-size:8.5px; color:#a5b4fc; margin-bottom:14px; }
+.sidebar-section { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#818cf8; margin:12px 0 5px; border-bottom:1px solid #312e81; padding-bottom:2px; }
+.contact-item { font-size:8px; color:#c7d2fe; margin-bottom:4px; word-break:break-all; }
+.skill-bar { background:#312e81; border-radius:3px; padding:3px 7px; margin-bottom:4px; font-size:8px; color:#e0e7ff; }
+.section { margin-bottom:13px; }
+.section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4f46e5; border-bottom:2px solid #4f46e5; padding-bottom:3px; margin-bottom:7px; }
+.entry { margin-bottom:7px; }
+.entry strong { font-size:9.5px; color:#111; }
+.date { font-size:8.5px; color:#64748b; white-space:nowrap; }
 .entry-sub { font-size:8.5px; color:#64748b; margin-top:2px; }
-.tech { font-size:8px; color:#6366f1; margin:3px 0; }
-ul { margin:4px 0 0 14px; }
+.tech { font-size:8px; color:#6366f1; margin:2px 0; }
+ul { margin:3px 0 0 13px; }
 ul li { font-size:9px; color:#374151; margin-bottom:2px; }
 </style>
 </head>
 <body>
-<div class="wrapper">
-  <div class="sidebar">
-    <div class="avatar">' . mb_substr($worker['fullName'], 0, 1) . '</div>
-    <div class="sidebar-name">' . $e($worker['fullName']) . '</div>
-    <div class="sidebar-role">' . $e($worker['industry'] ?? '') . '</div>
-    <div class="sidebar-section">Contact</div>
-    ' . $contactItems . '
-    ' . ($skills ? '<div class="sidebar-section">Compétences</div>' . $skillsSidebar : '') . '
-  </div>
-  <div class="main">
-    ' . $expHtml . $eduHtml . $projHtml . $certHtml . '
-  </div>
-</div>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="30%" bgcolor="#1e1b4b" style="padding:22px 12px; vertical-align:top;">
+      <div class="avatar">' . $initial . '</div>
+      <div class="sidebar-name">' . $e($worker['fullName']) . '</div>
+      <div class="sidebar-role">' . $e($worker['industry'] ?? '') . '</div>
+      <div class="sidebar-section">Contact</div>
+      ' . $contactItems . '
+      ' . ($skills ? '<div class="sidebar-section">Compétences</div>' . $skillsSidebar : '') . '
+    </td>
+    <td width="70%" style="padding:22px 18px; vertical-align:top; background:#fff;">
+      ' . $expHtml . $eduHtml . $projHtml . $certHtml . '
+    </td>
+  </tr>
+</table>
 </body>
 </html>';
 }
@@ -1068,7 +1081,6 @@ private function buildCvHtmlAmerican(
         ...$links
     ]));
 
-    // Professional summary from industry field
     $summaryHtml = !empty($worker['industry'])
         ? '<div class="section"><div class="section-title">PROFESSIONAL SUMMARY</div><p class="summary">' . $e($worker['industry']) . '</p></div>'
         : '';
@@ -1082,14 +1094,22 @@ private function buildCvHtmlAmerican(
     if ($experience) {
         $items = '';
         foreach ($experience as $exp) {
-            $end = !empty($exp['end_date']) ? $e($exp['end_date']) : 'Present';
+            $end    = !empty($exp['end_date']) ? $e($exp['end_date']) : 'Present';
             $period = $e($exp['start_date'] ?? '') . ' – ' . $end;
-            $desc = '';
+            $desc   = '';
             if (!empty($exp['description'])) {
                 $lines = array_filter(array_map('trim', explode("\n", $exp['description'])));
                 if ($lines) $desc = '<ul>' . implode('', array_map(fn($l) => '<li>' . $e($l) . '</li>', $lines)) . '</ul>';
             }
-            $items .= '<div class="entry"><div class="entry-row"><span class="job-title">' . $e($exp['title']) . '</span><span class="date">' . $period . '</span></div><div class="company">' . $e($exp['company'] ?? '') . ($exp['location'] ? ', ' . $e($exp['location']) : '') . '</div>' . $desc . '</div>';
+            $items .= '
+            <div class="entry">
+              <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td><strong class="job-title">' . $e($exp['title']) . '</strong></td>
+                <td align="right" width="1%" nowrap><span class="date">' . $period . '</span></td>
+              </tr></table>
+              <div class="company">' . $e($exp['company'] ?? '') . ($exp['location'] ? ', ' . $e($exp['location']) : '') . '</div>
+              ' . $desc . '
+            </div>';
         }
         $expHtml = '<div class="section"><div class="section-title">PROFESSIONAL EXPERIENCE</div>' . $items . '</div>';
     }
@@ -1099,7 +1119,14 @@ private function buildCvHtmlAmerican(
         $items = '';
         foreach ($education as $edu) {
             $period = trim(($edu['start_year'] ?? '') . ' – ' . ($edu['end_year'] ?? ''), ' –');
-            $items .= '<div class="entry"><div class="entry-row"><span class="job-title">' . $e($edu['degree']) . '</span><span class="date">' . $e($period) . '</span></div><div class="company">' . $e($edu['institution'] ?? '') . '</div></div>';
+            $items .= '
+            <div class="entry">
+              <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td><strong class="job-title">' . $e($edu['degree']) . '</strong></td>
+                <td align="right" width="1%" nowrap><span class="date">' . $e($period) . '</span></td>
+              </tr></table>
+              <div class="company">' . $e($edu['institution'] ?? '') . '</div>
+            </div>';
         }
         $eduHtml = '<div class="section"><div class="section-title">EDUCATION</div>' . $items . '</div>';
     }
@@ -1110,7 +1137,7 @@ private function buildCvHtmlAmerican(
         foreach ($projects as $proj) {
             $tech = !empty($proj['technologies']) ? ' <span class="tech-inline">(' . implode(', ', array_map($e, $proj['technologies'])) . ')</span>' : '';
             $pts  = !empty($proj['points']) ? '<ul>' . implode('', array_map(fn($p) => '<li>' . $e($p) . '</li>', $proj['points'])) . '</ul>' : '';
-            $items .= '<div class="entry"><div class="job-title">' . $e($proj['name']) . $tech . '</div>' . $pts . '</div>';
+            $items .= '<div class="entry"><strong class="job-title">' . $e($proj['name']) . '</strong>' . $tech . $pts . '</div>';
         }
         $projHtml = '<div class="section"><div class="section-title">PROJECTS</div>' . $items . '</div>';
     }
@@ -1128,18 +1155,17 @@ private function buildCvHtmlAmerican(
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: "DejaVu Sans", Arial, sans-serif; font-size:9.5px; color:#111; background:#fff; padding:28px 36px; line-height:1.5; }
-.header { text-align:center; margin-bottom:12px; }
-.header h1 { font-size:24px; font-weight:700; color:#111; letter-spacing:1px; text-transform:uppercase; }
+.header { text-align:center; margin-bottom:10px; }
+.header h1 { font-size:22px; font-weight:700; color:#111; letter-spacing:2px; text-transform:uppercase; }
 .contact-line { font-size:8.5px; color:#374151; margin-top:3px; }
-.divider { height:2px; background:#111; margin:8px 0; }
-.section { margin-bottom:12px; }
-.section-title { font-size:9px; font-weight:700; letter-spacing:1.5px; color:#111; margin-bottom:5px; }
+.divider-thick { height:2px; background:#111; margin:8px 0 10px; }
+.section { margin-bottom:11px; }
+.section-title { font-size:9px; font-weight:700; letter-spacing:1.5px; color:#111; margin-bottom:5px; border-bottom:1px solid #d1d5db; padding-bottom:2px; }
 .summary { font-size:9.5px; color:#374151; line-height:1.6; }
 .skills-line { font-size:9.5px; color:#374151; }
 .entry { margin-bottom:7px; }
-.entry-row { display:table; width:100%; }
-.job-title { display:table-cell; font-weight:700; font-size:9.5px; }
-.date { display:table-cell; text-align:right; font-size:8.5px; color:#374151; white-space:nowrap; width:1%; }
+.job-title { font-weight:700; font-size:9.5px; color:#111; }
+.date { font-size:8.5px; color:#374151; white-space:nowrap; }
 .company { font-size:8.5px; color:#374151; font-style:italic; margin-bottom:2px; }
 .tech-inline { font-size:8.5px; color:#374151; font-weight:400; }
 ul { margin:3px 0 0 16px; }
@@ -1151,7 +1177,7 @@ ul li { font-size:9px; color:#374151; margin-bottom:2px; }
   <h1>' . $e($worker['fullName']) . '</h1>
   <div class="contact-line">' . $contactLine . '</div>
 </div>
-<div class="divider"></div>
+<div class="divider-thick"></div>
 ' . $summaryHtml . $expHtml . $eduHtml . $skillsHtml . $projHtml . $certHtml . '
 </body>
 </html>';
