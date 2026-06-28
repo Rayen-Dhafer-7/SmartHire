@@ -76,7 +76,7 @@
         @reset-form="resetForm"
         @photo-selected="handlePhotoSelected"
         @download-cv="downloadCV"
-        @generate-cv="generateCV"
+        @generate-cv="openCvModelPicker"
         @add-education="addEducation"
         @remove-education="removeEducation"
         @add-experience="addExperience"
@@ -92,6 +92,138 @@
       <!-- Change Password Tab -->
       <PasswordTab v-if="activeTab === 'password'" />
     </div>
+    <!-- CV Model Picker Modal -->
+    <Transition name="fade-overlay">
+      <div v-if="showCvModelModal" class="cv-modal-overlay" @click.self="showCvModelModal = false">
+        <div class="cv-modal">
+          <button class="cv-modal-close" @click="showCvModelModal = false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+
+          <div class="cv-modal-header">
+            <div class="cv-modal-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <h3>Choose a CV Template</h3>
+            <p>Select the style that matches your target market</p>
+          </div>
+
+          <div class="cv-model-grid">
+            <!-- Canadian -->
+            <div
+              class="cv-model-card"
+              :class="{ selected: selectedCvTemplate === 'canadian' }"
+              @click="selectedCvTemplate = 'canadian'"
+            >
+              <div class="cv-model-preview canadian-preview">
+                <div class="prev-header-bar"></div>
+                <div class="prev-line long"></div>
+                <div class="prev-line medium"></div>
+                <div class="prev-divider"></div>
+                <div class="prev-line short"></div>
+                <div class="prev-line long"></div>
+                <div class="prev-line medium"></div>
+                <div class="prev-divider"></div>
+                <div class="prev-badges"><span></span><span></span><span></span></div>
+              </div>
+              <div class="cv-model-info">
+                <span class="cv-model-flag">🇨🇦</span>
+                <strong>CV Canadien</strong>
+                <p>Concis, 1–2 pages, orienté compétences, sans photo</p>
+              </div>
+              <div v-if="selectedCvTemplate === 'canadian'" class="cv-model-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- French -->
+            <div
+              class="cv-model-card"
+              :class="{ selected: selectedCvTemplate === 'french' }"
+              @click="selectedCvTemplate = 'french'"
+            >
+              <div class="cv-model-preview french-preview">
+                <div class="prev-sidebar">
+                  <div class="prev-avatar"></div>
+                  <div class="prev-line short" style="margin-top:6px"></div>
+                  <div class="prev-line short"></div>
+                </div>
+                <div class="prev-content">
+                  <div class="prev-line long"></div>
+                  <div class="prev-line medium"></div>
+                  <div class="prev-divider"></div>
+                  <div class="prev-line short"></div>
+                  <div class="prev-line long"></div>
+                  <div class="prev-line medium"></div>
+                </div>
+              </div>
+              <div class="cv-model-info">
+                <span class="cv-model-flag">🇫🇷</span>
+                <strong>CV Français</strong>
+                <p>Mise en page à deux colonnes, photo, design moderne</p>
+              </div>
+              <div v-if="selectedCvTemplate === 'french'" class="cv-model-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- American -->
+            <div
+              class="cv-model-card"
+              :class="{ selected: selectedCvTemplate === 'american' }"
+              @click="selectedCvTemplate = 'american'"
+            >
+              <div class="cv-model-preview american-preview">
+                <div class="prev-name-bar">
+                  <div class="prev-line long" style="height:10px;border-radius:3px"></div>
+                  <div class="prev-line medium" style="margin-top:4px"></div>
+                </div>
+                <div class="prev-divider accent"></div>
+                <div class="prev-line short bold-label"></div>
+                <div class="prev-line long"></div>
+                <div class="prev-line medium"></div>
+                <div class="prev-divider accent"></div>
+                <div class="prev-badges"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="cv-model-info">
+                <span class="cv-model-flag">🇺🇸</span>
+                <strong>CV Américain (Resume)</strong>
+                <p>1 page max, résumé professionnel en tête, ATS-friendly</p>
+              </div>
+              <div v-if="selectedCvTemplate === 'american'" class="cv-model-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="cv-modal-actions">
+            <button class="btn-cancel" @click="showCvModelModal = false">Cancel</button>
+            <button
+              class="btn-generate-confirm"
+              :disabled="!selectedCvTemplate"
+              @click="generateCV"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2L3 14h6l-2 8 10-12h-6l2-8z"/>
+              </svg>
+              Generate CV
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
   </div>
 </template>
 
@@ -134,6 +266,8 @@ const logoPreview = ref(null);
 const selectedResumeFile = ref(null);
 const isGeneratingCV = ref(false);
 const isExtracting = ref(false);
+const showCvModelModal = ref(false);
+const selectedCvTemplate = ref(null);
 
 onMounted(async () => {
   if (!sessionStorage.getItem('profilePageReloaded')) {
@@ -281,14 +415,21 @@ const downloadCV = () => {
   }
 };
 
+const openCvModelPicker = () => {
+  selectedCvTemplate.value = null;
+  showCvModelModal.value = true;
+};
+
 const generateCV = async () => {
+  if (!selectedCvTemplate.value) return;
+  showCvModelModal.value = false;
   try {
     isGeneratingCV.value = true;
     const token = localStorage.getItem('auth_token');
 
     const response = await axios.post(
       `${import.meta.env.VITE_API_URL}/worker/cv/generate`,
-      {},
+      { template: selectedCvTemplate.value },
       {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       }
@@ -730,4 +871,189 @@ const removeCertification = async (index) => {
     justify-content: center;
   }
 }
+/* ── CV Model Picker Modal ── */
+.cv-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.cv-modal {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 70px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+.cv-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+.cv-modal-close:hover { background: #e2e8f0; color: #0f172a; }
+
+.cv-modal-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.cv-modal-icon {
+  width: 56px;
+  height: 56px;
+  background: #eef2ff;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+  margin: 0 auto 1rem;
+}
+.cv-modal-header h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.375rem;
+}
+.cv-modal-header p {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.cv-model-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.cv-model-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  background: #fafbfc;
+}
+.cv-model-card:hover { border-color: #a5b4fc; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,0.1); }
+.cv-model-card.selected { border-color: #4f46e5; background: #fafeff; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
+
+/* Mini CV previews */
+.cv-model-preview {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  height: 130px;
+  margin-bottom: 0.875rem;
+  padding: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Canadian preview: top bar + lines */
+.canadian-preview .prev-header-bar {
+  height: 8px; background: #4f46e5; border-radius: 3px; margin-bottom: 6px;
+}
+/* French preview: two-column with avatar */
+.french-preview { display: flex; gap: 6px; padding: 6px; }
+.prev-sidebar { width: 30%; display: flex; flex-direction: column; align-items: center; background: #f3f4f6; border-radius: 4px; padding: 6px 4px; }
+.prev-avatar { width: 28px; height: 28px; border-radius: 50%; background: #c7d2fe; }
+.prev-content { flex: 1; }
+/* American preview: name block + accent dividers */
+.american-preview .prev-name-bar { margin-bottom: 4px; }
+.prev-divider.accent { background: #4f46e5; height: 2px; border-radius: 1px; margin: 5px 0; }
+.bold-label { background: #374151; height: 6px; width: 40%; border-radius: 2px; }
+
+/* Shared preview elements */
+.prev-line { height: 5px; background: #e2e8f0; border-radius: 3px; margin-bottom: 4px; }
+.prev-line.long { width: 90%; }
+.prev-line.medium { width: 65%; }
+.prev-line.short { width: 40%; }
+.prev-divider { height: 1px; background: #e2e8f0; margin: 5px 0; }
+.prev-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.prev-badges span { height: 12px; width: 30px; background: #ede9fe; border-radius: 10px; }
+
+.cv-model-info { text-align: center; }
+.cv-model-flag { font-size: 1.5rem; display: block; margin-bottom: 0.25rem; }
+.cv-model-info strong { display: block; font-size: 0.875rem; font-weight: 600; color: #0f172a; margin-bottom: 0.25rem; }
+.cv-model-info p { font-size: 0.7rem; color: #64748b; line-height: 1.4; margin: 0; }
+
+.cv-model-check {
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
+  width: 24px;
+  height: 24px;
+  background: #4f46e5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cv-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-cancel {
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-cancel:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+.btn-generate-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-generate-confirm:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(79,70,229,0.3); }
+.btn-generate-confirm:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Overlay transition */
+.fade-overlay-enter-active, .fade-overlay-leave-active { transition: opacity 0.3s ease; }
+.fade-overlay-enter-from, .fade-overlay-leave-to { opacity: 0; }
+
+@media (max-width: 640px) {
+  .cv-model-grid { grid-template-columns: 1fr; }
+}
+
 </style>
