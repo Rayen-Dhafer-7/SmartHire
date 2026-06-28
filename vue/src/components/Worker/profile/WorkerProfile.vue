@@ -134,7 +134,7 @@
               <div class="cv-model-info">
                 <span class="cv-model-flag">🇨🇦</span>
                 <strong>CV Canadien</strong>
-                <p>Concis, 1–2 pages, orienté compétences, sans photo</p>
+                <p>Concise, 1–2 pages, skills-focused, without photo</p>
               </div>
               <div v-if="selectedCvTemplate === 'canadian'" class="cv-model-check">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
@@ -167,7 +167,7 @@
               <div class="cv-model-info">
                 <span class="cv-model-flag">🇫🇷</span>
                 <strong>CV Français</strong>
-                <p>Mise en page à deux colonnes, photo, design moderne</p>
+                <p>Two-column layout, with photo, modern design</p>
               </div>
               <div v-if="selectedCvTemplate === 'french'" class="cv-model-check">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
@@ -197,7 +197,7 @@
               <div class="cv-model-info">
                 <span class="cv-model-flag">🇺🇸</span>
                 <strong>CV Américain (Resume)</strong>
-                <p>1 page max, résumé professionnel en tête, ATS-friendly</p>
+                <p>Maximum 1 page, professional summary at the top, ATS-friendly</p>
               </div>
               <div v-if="selectedCvTemplate === 'american'" class="cv-model-check">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
