@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  laravel:
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    container_name: smarthire_laravel
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    user: "www-data:www-data"  # Add this line
+    volumes:
+      - ./laravel:/var/www/html
+      - /var/www/html/vendor
+      - storage_data:/var/www/html/storage/app/public
+      - public_storage_data:/var/www/html/public/storage
+      - ./certs:/var/www/html/certs:ro
+    networks:
+      - smarthire
+    depends_on:
+      selenium:
+        condition: service_healthy 
+
+  vue:
+    build:
+      context: ./vue
+      dockerfile: Dockerfile
+    container_name: smarthire_vue
+    restart: unless-stopped
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./vue:/app
+    networks:
+      - smarthire
+    depends_on:
+      - laravel
+
+  selenium:
+      image: selenium/standalone-chrome:3.141.59
+      container_name: smarthire_selenium
+      restart: unless-stopped
+      ports:
+        - "4444:4444"
+        - "7900:7900"
+      shm_size: '2gb'
+      networks:
+        - smarthire
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+networks:
+  smarthire:
+    driver: bridge
+
+# ✅ ADD THIS SECTION
+volumes:
+  storage_data:
+  public_storage_data:

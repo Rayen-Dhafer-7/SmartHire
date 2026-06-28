@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <theme>STANDARD</theme>
+    <encoding>UTF-8</encoding>
+    <protocol>HTTPS</protocol>
+    <documentTitle>Automation Exercise Report</documentTitle>
+    <reportName>Automation Exercise Test Results</reportName>
+    <timestampFormat>MMM dd, yyyy HH:mm:ss</timestampFormat>
+</configuration>
